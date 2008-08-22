@@ -122,7 +122,8 @@ bool scommand_is_empty (const scommand *self)
 {
 	assert (self != NULL);
 	
-	return (bool) g_queue_is_empty (self->args);
+	return g_queue_is_empty (self->args);
+/* ese casteo da error...ver */
 }
 
 unsigned int scommand_length (const scommand *self)
