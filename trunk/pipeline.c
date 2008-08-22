@@ -40,13 +40,6 @@ void pipeline_push_back (pipeline *self, scommand *sc) {
 
 void pipeline_pop_front (pipeline *self) {
 	assert (self!=NULL);
-	assert (sc!=NULL);
-	
-	g_queue_push_head (self->scmd,sc);
-}
-
-void pipeline_pop_front (pipeline *self) {
-	assert (self!=NULL);
 	assert (!pipeline_is_empty(self));
 	
 	g_queue_pop_head (self->scmd);
@@ -60,10 +53,9 @@ void pipeline_set_wait (pipeline *self, const bool w) {
 
 bool pipeline_is_empty (const pipeline *self) {
 	assert (self!=NULL);
+ 
 	
-	bool result = (bool) g_queue_is_empty (self->scmd);
-	
-	return result;  /*mejor coding style??*/
+	return g_queue_is_empty (self->scmd);
 }
 
 unsigned int pipeline_length (const pipeline *self) {
@@ -80,28 +72,30 @@ scommand *pipeline_front (const pipeline *self) {
 }
 
 bool pipeline_get_wait (const pipeline *self) {
-	assert (slef!=NULL);
+	assert (self!=NULL);
 	
 	return self->wait;
 }
 
 bstring pipeline_to_string (const pipeline *self) {
-	assert (self!=NULL);
-	
 	bstring result = NULL;
 	scommand *scmd = NULL;
 	unsigned int n = pipeline_length(self), i = 0;
 	
-/* ciclo para concatenar todos los scommand */	
-	while (i<n) { 
-		scmd = pipeline_front(self);
-		pipeline_pop_front(scmd);
-		bconcat (result, scommand_to_string (scmd);
-                /* fijarse el formato de salida (ponemos espacios?) */
-		pipeline_push_back(scmd);
-		i = i+1;
-	}
+	assert (self!=NULL);
 	
+	
+	if (!pipeline_is_empty(self)) {
+	/* ciclo para concatenar todos los scommand */	
+		while (i<n) { 
+			scmd = pipeline_front(self);
+			pipeline_pop_front(self);
+			bconcat (result, scommand_to_string (scmd));
+		        /* fijarse el formato de salida (ponemos espacios?) */
+			pipeline_push_back(self,scmd);
+			i++;
+		}
+	}
 	return result;
 }
 
