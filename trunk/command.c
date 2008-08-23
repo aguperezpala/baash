@@ -219,11 +219,8 @@ bstring scommand_to_string (const scommand *self)
 	 * de a uno con result, con una separacion de \t entre ellos
 	 */
 	while ((unsigned int) i < n) {
-		/* método forzado por el casteo 'const' del parámetro
-		 * hay problemas con los tipos de lo devuelto por
-		 * q_queue_peek_nth y lo tomado por bstrcpy
-		 */
-		aux = bstrcpy ((const_bstring) g_queue_peek_nth (self, i+1));
+		/* método forzado por el casteo 'const' del parámetro */
+		aux = bstrcpy ((const_bstring) g_queue_peek_nth (self->args, i+1));
 		bcatcstr (result, "\t");
 		bconcat (result, (const_bstring) aux);
 		bdestroy (aux);
