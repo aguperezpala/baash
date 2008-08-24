@@ -1,6 +1,7 @@
 /*	Implementacion del command.c con el GQueue
  *	Vamos a guardar el nombre del comando en el args[0] de la estructura
-*/
+ */
+
 #include "command.h"
 #include <glib.h>
 #include <stdio.h>
@@ -8,8 +9,11 @@
 #include <assert.h>
 
 
-struct scommand_s
-{
+
+/***     SCOMMAND       ***/
+/***  Comando simple    ***/
+
+struct scommand_s {
 	bool builtin; 
 	GQueue * args; /* nombre del comando y sus argumentos, se usa una cola */
 	bstring dirOut;
@@ -144,7 +148,6 @@ bool scommand_is_empty (const scommand *self)
 	assert (self != NULL);
 	
 	return g_queue_is_empty (self->args);
-/* ese casteo da error...ver */
 }
 
 unsigned int scommand_length (const scommand *self)
@@ -153,20 +156,20 @@ unsigned int scommand_length (const scommand *self)
 	assert (self != NULL);
 	
 	if (!scommand_is_empty (self)) {
-		return (unsigned int) g_queue_get_length (self->args);
+		return g_queue_get_length (self->args);
 	} else {
 		return (unsigned int) 0;
 	}
 }
 
 bstring scommand_front (const scommand *self)
-{	/* devuelve una copia del primer elemento de la cola */
+{	/* devuelve el primer elemento de la cola */
 	bstring result = NULL;
 	/* REQUIRES */
 	assert (self != NULL);
 	assert (!scommand_is_empty (self));
 	
-	result = bstrcpy ((const_bstring) g_queue_peek_head (self->args));
+	result = g_queue_peek_head (self->args);
 	
 	/* ENSURES */
 	assert (result != NULL);
@@ -192,8 +195,7 @@ bstring scommand_get_redir_in (const scommand *self)
 	 * NULL en caso contrario, por lo que no hace falta comprobarlo 
 	 */
 }
-	
-	
+
 bstring scommand_get_redir_out (const scommand *self)
 {	/* obtiene el nombre de la redireccion de salida */
 	/* REQUIRES */
@@ -216,12 +218,13 @@ bstring scommand_to_string (const scommand *self)
 	result = bfromcstralloc (BASE_ALLOC,"");
 	
 	/* si hay comandos o argumentos en el scommand los concatenaremos 
-	 * de a uno con result, con una separacion de \t entre ellos
+	 * de a uno con result, con una separacion de un espacio entre ellos
 	 */
 	while ((unsigned int) i < n) {
 		/* método forzado por el casteo 'const' del parámetro */
+		/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
 		aux = bstrcpy ((const_bstring) g_queue_peek_nth (self->args, i+1));
-		bcatcstr (result, "\t");
+		bcatcstr (result, " ");
 		bconcat (result, (const_bstring) aux);
 		bdestroy (aux);
 		i++;
@@ -242,6 +245,159 @@ bstring scommand_to_string (const scommand *self)
 	
 	/* ENSURES */
 	assert (scommand_is_empty (self) || (blength (result)>0));
+	
+	return result;
+}
+
+
+
+
+/***             PIPELINE              ***/
+/***   Tubería: cadena de scommands    ***/
+
+
+struct pipeline_s {
+	GQueue *scmd;	/* cola de scommands */
+	bool wait;	/* correr en segundo plano? */
+};
+
+/*** Inicialización y destrucción ***/
+
+pipeline *pipeline_new (void)
+{
+	pipeline *result = NULL;
+	
+	result = (pipeline *) calloc (1,sizeof (struct pipeline_s));
+	assert (result != NULL);
+	
+	result->scmd = g_queue_new ();
+	result->wait = true;
+	
+	assert (result != NULL);
+	return result;
+}
+
+void pipeline_destroy (pipeline *self)
+{
+	/* REQUIRES */
+	assert (self!=NULL);
+	
+	if (self->scmd != NULL) {
+		/* si hay scommands hay que destruirlos antes de liberar la cola */
+		while(!g_queue_is_empty (self->scmd)) 
+			scommand_destroy (g_queue_peek_head (self->scmd));
+		g_queue_free (self->scmd);
+	}
+	
+	free (self);
+}
+
+/*** Modificadores ***/
+
+void pipeline_push_back (pipeline *self, scommand *sc)
+{	/* agrega por detrás un scommand a la cola */
+	/* REQUIRES */
+	assert (self!=NULL);
+	assert (sc!=NULL);
+	
+	g_queue_push_tail (self->scmd, sc);
+	
+	/* ENSURES */
+	assert (!pipeline_is_empty (self));
+}
+
+void pipeline_pop_front (pipeline *self)
+{	/* quita el primer scommand de la cola */
+	/* REQUIRES */
+	assert (self!=NULL);
+	assert (!pipeline_is_empty(self));
+	
+	scommand_destroy (g_queue_pop_head (self->scmd));
+}
+
+void pipeline_set_wait (pipeline *self, const bool w)
+{	/* define si el pipe corre en segundo plano o no */
+	/* REQUIRES */
+	assert (self!=NULL);
+	
+	self->wait = w;
+}
+
+/*** Proyectores ***/
+
+bool pipeline_is_empty (const pipeline *self)
+{	/* el pipe está vacío? */
+	/* REQUIRES */
+	assert (self!=NULL);
+	
+	return g_queue_is_empty (self->scmd);
+}
+
+unsigned int pipeline_length (const pipeline *self)
+{	/* cantidad de scommands que contiene el pipe */
+	/* REQUIRES */
+	assert (self!=NULL);
+
+	if (!pipeline_is_empty (self)) {
+		return g_queue_get_length (self->scmd);
+	} else {
+		return (unsigned int) 0;
+	}
+}
+
+scommand *pipeline_front (const pipeline *self)
+{	/* devuelve el primer scommand del pipe */
+	scommand* result = NULL;
+	/* REQUIRES */
+	assert (self!=NULL);
+	assert (!pipeline_is_empty(self));
+	
+	result = g_queue_peek_head (self->scmd);
+	
+	/* ENSURES */
+	assert (result != NULL);
+	
+	return result;
+}
+
+bool pipeline_get_wait (const pipeline *self)
+{
+	/* REQUIRES */
+	assert (self!=NULL);
+	
+	return self->wait;
+}
+
+bstring pipeline_to_string (const pipeline *self)
+{	/* serializador del pipe, para debuggeo solamente
+	 * imprime el pipe de forma legible para el ojo humano
+	 * si el pipe es vacío devuelve una cadena vacía de BASE_ALLOC lugares
+	 */
+	bstring result = NULL , aux = NULL;
+	unsigned int n = pipeline_length (self);
+	int i = 0;
+	
+	/* REQUIRES */
+	assert (self!=NULL);
+	
+	result = bfromcstralloc (BASE_ALLOC,"");
+	
+	if (!pipeline_is_empty (self)) {
+	/* concatenamos todos los scommand, con pipes '|' para separarlos */
+	/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
+		while ((unsigned int) i < n) { 
+			aux = bstrcpy ((const_bstring) g_queue_peek_nth (self->scmd, i+1));
+			if (i != 0)
+				bcatcstr (result, " | ");
+			bconcat (result, aux);
+			bdestroy (aux);
+			i++;
+		}
+	}
+	
+	/* ENSURES */
+	assert (pipeline_is_empty (self) || pipeline_get_wait (self) ||
+		blength (result)>0 );
 	
 	return result;
 }
