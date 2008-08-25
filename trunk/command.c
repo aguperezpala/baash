@@ -122,9 +122,10 @@ void scommand_set_redir_in (scommand *self, bstring filename)
 	assert (self != NULL);
 	
 	if (filename != NULL && blength (filename)>0 ) {
-		bassign (self->dirIn, (const_bstring) filename);
+		self->dirOut = bstrcpy ((const_bstring) filename);
+	/*	bassign (self->dirIn, (const_bstring) filename);	*/
 	} else {
-		self->dirIn = bfromcstr ("");
+		self->dirIn = NULL;
 	}
 }
 
@@ -134,9 +135,10 @@ void scommand_set_redir_out (scommand *self, bstring filename)
 	assert (self != NULL);
 
 	if (filename != NULL && blength (filename)>0 ) {
-		bassign (self->dirIn, (const_bstring) filename);
+		self->dirIn = bstrcpy ((const_bstring) filename);
+	/*	bassign (self->dirIn, (const_bstring) filename);	*/
 	} else {
-		self->dirIn = bfromcstr ("");
+		self->dirIn = NULL;
 	}
 }
 
@@ -220,10 +222,10 @@ bstring scommand_to_string (const scommand *self)
 	/* si hay comandos o argumentos en el scommand los concatenaremos 
 	 * de a uno con result, con una separacion de un espacio entre ellos
 	 */
-	while ((unsigned int) i < n) {
+	while ((unsigned int) i <= n) {
 		/* método forzado por el casteo 'const' del parámetro */
 		/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
-		aux = bstrcpy ((const_bstring) g_queue_peek_nth (self->args, i+1));
+		aux = bstrcpy ((const_bstring) g_queue_peek_nth (self->args, i));
 		bcatcstr (result, " ");
 		bconcat (result, (const_bstring) aux);
 		bdestroy (aux);
