@@ -18,6 +18,7 @@ int main (void)
 	if (aux->data != NULL)
 		printf ("pipe = %s\n", aux->data);
 	
+	bdestroy (aux);
 	scmd1 = scommand_new ();
 	scmd2 = scommand_new ();
 	
@@ -63,16 +64,17 @@ int main (void)
 	if (aux->data != NULL)
 		printf ("pipe = %s\n",aux->data);
 	
+	bdestroy (aux);
 	pipeline_destroy (pipe);
 	scommand_destroy (scmd1);
 	scommand_destroy (scmd2);
-	bdestroy (aux);
 	bdestroy (str1);
 	bdestroy (str2);
 	bdestroy (str3);
 	bdestroy (str4);
 	bdestroy (str5);
 	bdestroy (str6);
+	bdestroy (dummy);
 	
 	return 0;
 }

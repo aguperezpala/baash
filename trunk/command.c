@@ -51,16 +51,20 @@ scommand *scommand_new (void)
 void scommand_destroy (scommand *self)
 {
 /*	bstring aux = NULL;*/
+	unsigned int n = 0, i = 0;
 	/* REQUIRES */
 	assert (self != NULL);
-	/*
+	
 	bdestroy (self->dirOut);
 	bdestroy (self->dirIn);
-	*/
+	
 	if (self->args != NULL) {
-		/* si hay argumentos hay que liberarlos antes de destruir la cola 
-		while(!g_queue_is_empty (self->args))
-			bdestroy (scommand_front (self));*/
+		n = g_queue_get_length (self->args);
+		/*si hay argumentos hay que liberarlos antes de destruir la cola*/
+		while (i < n){
+			bdestroy (g_queue_peek_nth (self->args,i));
+			i++;
+		}
 		g_queue_free (self->args);
 	}
 	
@@ -297,13 +301,14 @@ pipeline *pipeline_new (void)
 
 void pipeline_destroy (pipeline *self)
 {
+	
 	/* REQUIRES */
 	assert (self!=NULL);
 	
+	
+	
 	if (self->scmd != NULL) {
-		/* si hay scommands hay que destruirlos antes de liberar la cola 
-		while(!g_queue_is_empty (self->scmd)) 
-			scommand_destroy (g_queue_peek_head (self->scmd));*/
+		/*luego liberamos la misma cola*/
 		g_queue_free (self->scmd);
 	}
 	
@@ -391,7 +396,7 @@ bstring pipeline_to_string (const pipeline *self)
 	 * imprime el pipe de forma legible para el ojo humano
 	 * si el pipe es vacío devuelve una cadena vacía
 	 */
-	bstring result = NULL;
+	bstring result = NULL, aux = NULL;
 	scommand* scaux = NULL;
 	unsigned int n = pipeline_length (self);
 	int i = 0;
@@ -408,7 +413,9 @@ bstring pipeline_to_string (const pipeline *self)
 			scaux = g_queue_peek_nth (self->scmd, i);
 			if (i != 0)
 				bcatcstr (result, " |");
-			bconcat (result, scommand_to_string(scaux));
+			aux = scommand_to_string (scaux); /*almacenamos temporalmente*/
+			bconcat (result, aux);
+			bdestroy (aux); /*libeeramos*/
 			scaux = NULL;
 			i++;
 		}
