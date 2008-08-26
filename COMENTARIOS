@@ -1,4 +1,5 @@
-Podriamos usar este archivo para agregar "comentarios" y cosas asi no tenemos que estar haciendo commit con comentarios largasos...
+Podriamos usar este archivo para agregar "comentarios" y cosas asi no tenemos que 
+estar haciendo commit con comentarios largasos...
 
 El tema de las funciones *_to_string
 while ((unsigned int) i < n) { 
@@ -9,5 +10,14 @@ while ((unsigned int) i < n) {
 			scaux = NULL;
 			i++;
 }
-tienen un bucle parecido a ese... fijense que scaux (en el caso de scommand_to_string es un bstring), fijense que alomejor setearlo dentro del bucle
-como NULL es "ineficiente"... se lo podria hacer afuera del bucle para que lo haga 1 sola vez... creo.. fijense y diganme cualquier cosa..
+tienen un bucle parecido a ese... fijense que scaux (en el caso de scommand_to_string 
+es un bstring), fijense que alomejor setearlo dentro del bucle como NULL es "ineficiente"...
+ se lo podria hacer afuera del bucle para que lo haga 1 sola vez... creo.. fijense y diganme 
+cualquier cosa..
+
+
+
+* El tema de los "leaks" que valgrind tira como "still reachable: 5,276 bytes in 
+8 blocks. " para mi son por la libreria puta GQueue.... yo hace un tiempo intente
+hacer un minimain que solo creaba una cola y la eliminaba y saltaba eso, fijense
+es la jodida cara, bueno... me wa a sleepear un poco, nos vemos mañana alomejor :D.
