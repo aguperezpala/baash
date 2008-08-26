@@ -414,7 +414,7 @@ bstring pipeline_to_string (const pipeline *self)
 		}
 	}
 	
-	if (blength (result) > 0 && pipeline_get_wait (self)) {
+	if (blength (result) > 0 && !pipeline_get_wait (self)) {
 		bcatcstr (result, " &");
 	} else if (blength (result) <= 0) {
 		bdestroy (result);

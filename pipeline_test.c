@@ -10,7 +10,7 @@ int main (void)
 	bstring str1 = NULL, str2 = NULL, str3 = NULL, str4 = NULL;
 	bstring dummy;
 	bstring str5 = NULL, str6 = NULL, aux = NULL;
-	bool b = false;
+	bool b = true;
 	
 	pipe = pipeline_new ();
 	aux = pipeline_to_string (pipe);
