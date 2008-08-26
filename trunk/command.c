@@ -391,7 +391,8 @@ bstring pipeline_to_string (const pipeline *self)
 	 * imprime el pipe de forma legible para el ojo humano
 	 * si el pipe es vacío devuelve una cadena vacía
 	 */
-	bstring result = NULL , aux = NULL;
+	bstring result = NULL;
+	scommand* scaux = NULL;
 	unsigned int n = pipeline_length (self);
 	int i = 0;
 	
@@ -404,11 +405,11 @@ bstring pipeline_to_string (const pipeline *self)
 	/* concatenamos todos los scommand, con pipes '|' para separarlos */
 	/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
 		while ((unsigned int) i < n) { 
-			aux = g_queue_peek_nth (self->scmd, i);
+			scaux = g_queue_peek_nth (self->scmd, i);
 			if (i != 0)
-				bcatcstr (result, " | ");
-			bconcat (result, aux);
-			aux = NULL;
+				bcatcstr (result, " |");
+			bconcat (result, scommand_to_string(scaux));
+			scaux = NULL;
 			i++;
 		}
 	}
