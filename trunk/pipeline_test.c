@@ -64,10 +64,10 @@ int main (void)
 	if (aux->data != NULL)
 		printf ("pipe = %s\n",aux->data);
 	
-	bdestroy (aux);
-	pipeline_destroy (pipe);
 	scommand_destroy (scmd1);
 	scommand_destroy (scmd2);
+	pipeline_destroy (pipe);
+	bdestroy (aux);
 	bdestroy (str1);
 	bdestroy (str2);
 	bdestroy (str3);

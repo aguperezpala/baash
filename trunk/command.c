@@ -52,6 +52,7 @@ void scommand_destroy (scommand *self)
 {
 /*	bstring aux = NULL;*/
 	unsigned int n = 0, i = 0;
+	bstring aux = NULL;
 	/* REQUIRES */
 	assert (self != NULL);
 	
@@ -62,7 +63,8 @@ void scommand_destroy (scommand *self)
 		n = g_queue_get_length (self->args);
 		/*si hay argumentos hay que liberarlos antes de destruir la cola*/
 		while (i < n){
-			bdestroy (g_queue_peek_nth (self->args,i));
+			if ((aux = g_queue_peek_nth (self->args,i)) != NULL)
+				bdestroy (aux);
 			i++;
 		}
 		g_queue_free (self->args);
