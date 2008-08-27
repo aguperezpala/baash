@@ -15,7 +15,7 @@
 
 struct scommand_s {
 	bool builtin; 
-	GQueue * args; /* nombre del comando y sus argumentos, se usa una cola */
+	GQueue * args; /* nombre del comando y sus argumentos */
 	bstring dirOut;
 	bstring dirIn;
 };
@@ -61,10 +61,12 @@ void scommand_destroy (scommand *self)
 	
 	if (self->args != NULL) {
 		n = g_queue_get_length (self->args);
-		/*si hay argumentos hay que liberarlos antes de destruir la cola*/
+		/* si hay argumentos se liberan antes de destruir la cola*/
 		while (i < n){
-			if ((aux = g_queue_peek_nth (self->args,i)) != NULL)
+			if ((aux = g_queue_peek_nth (self->args,i)) != NULL) {
 				bdestroy (aux);
+				aux = NULL;
+			}
 			i++;
 		}
 		g_queue_free (self->args);
@@ -76,7 +78,7 @@ void scommand_destroy (scommand *self)
 /*** Modificadores ***/
 
 void scommand_push_back (scommand *self, bstring argument)
-{	/* encolamos por detrás :D */
+{	/* encolamos por detras :D */
 	/* REQUIRES */
 	assert (self != NULL);
 	assert (argument != NULL);
@@ -102,13 +104,13 @@ void scommand_push_front (scommand *self, bstring argument)
 
 void scommand_pop_front (scommand *self)
 {	/* removemos el primer elemento */
-	/*bstring aux = NULL;*/
+	bstring aux = NULL;
 	/* REQUIRES */
 	assert (self != NULL);
 	assert (!g_queue_is_empty (self->args));
 	
-	g_queue_pop_head (self->args);
-	
+	aux = g_queue_pop_head (self->args);
+	aux = NULL;
 }
 
 
@@ -127,10 +129,6 @@ void scommand_set_redir_in (scommand *self, bstring filename)
 	
 	if (filename != NULL && blength (filename)>0 ) {
 		self->dirIn = filename;
-	/*	En el test exigen que sea la misma dir de memoria
-		por eso las opciones de aca abajo no sirven
-		self->dirIn = bstrcpy ((const_bstring) filename);
-		bassign (self->dirIn, (const_bstring) filename);	*/
 	} else {
 		self->dirIn = NULL;
 	}
@@ -143,10 +141,6 @@ void scommand_set_redir_out (scommand *self, bstring filename)
 
 	if (filename != NULL && blength (filename)>0 ) {
 		self->dirOut = filename;
-	/*	En el test exigen que sea la misma dir de memoria
-		por eso las opciones de aca abajo no sirven
-		self->dirOut = bstrcpy ((const_bstring) filename);
-		bassign (self->dirOut, (const_bstring) filename);	*/
 	} else {
 		self->dirOut = NULL;
 	}
@@ -176,14 +170,17 @@ unsigned int scommand_length (const scommand *self)
 
 bstring scommand_front (const scommand *self)
 {	/* devuelve el primer elemento de la cola */
+	bstring aux = NULL;
 	/* REQUIRES */
 	assert (self != NULL);
 	assert (!scommand_is_empty (self));
 	
-	/* ENSURES */
-	assert (g_queue_peek_head (self->args) != NULL);
+	aux = g_queue_peek_head (self->args);
 	
-	return g_queue_peek_head (self->args);
+	/* ENSURES */
+	assert (aux != NULL);
+	
+	return aux;
 }
 
 bool scommand_get_builtin (const scommand *self)
@@ -226,32 +223,19 @@ bstring scommand_to_string (const scommand *self)
 	
 	result = bfromcstr ("");
 	
-	/* si hay comandos o argumentos en el scommand los concatenaremos 
-	 * de a uno con result, con una separacion de un espacio entre ellos
-	 */
+	/* impresión del comando y sus argumentos */
 	while ((unsigned int) i < n) {
-		/* método forzado por el casteo 'const' del parámetro */
-		/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
+	/* si hay cadenas en el scommand las concatenaremos de a una
+	 * en result, con una separacion de un espacio entre ellas
+	 */
 		aux = g_queue_peek_nth (self->args, i);
 		bcatcstr (result, " ");
 		bconcat (result, aux);
 		aux = NULL;
 		i++;
 	}
-	/*	aux = scommand_front (self);
-		scommand_pop_front (self);
-		bcatcstr (result, (const char *) "\t");
-		bconcat (result, (const_bstring) aux);
-		scommand_push_back (self, aux);
-		i++;
-		
-		Forma sugerida en el .h para tocar cosas del scommand
-		El compilador se queja porque tocamos el parámetro de
-		 la función, que esta castedo con 'const'
-		Si se elimina ese casteo esta versión funciona bien, 
-		 y tiene la ventaja de usar funciones ya definidas.
-	}*/
 	
+	/* impresión de redirectores */
 	if ((aux = scommand_get_redir_in (self)) != NULL) {
 		bcatcstr (result, " < ");
 		bconcat (result, aux);
@@ -262,6 +246,7 @@ bstring scommand_to_string (const scommand *self)
 		bconcat (result, aux);
 		aux = NULL;
 	}
+	/* caso "no hay comando" */
 	if (blength (result) <= 0)
 		bdestroy (result);
 	
@@ -333,11 +318,13 @@ void pipeline_push_back (pipeline *self, scommand *sc)
 
 void pipeline_pop_front (pipeline *self)
 {	/* quita el primer scommand de la cola */
+	bstring aux = NULL;
 	/* REQUIRES */
 	assert (self!=NULL);
 	assert (!pipeline_is_empty(self));
 	
-	g_queue_pop_head (self->scmd);
+	aux = g_queue_pop_head (self->scmd);
+	aux = NULL;
 }
 
 void pipeline_set_wait (pipeline *self, const bool w)
@@ -410,22 +397,24 @@ bstring pipeline_to_string (const pipeline *self)
 	
 	if (!pipeline_is_empty (self)) {
 	/* concatenamos todos los scommand, con pipes '|' para separarlos */
-	/* ¿¿¿ las colas empiezan en 1 o en 0 ??? */
 		while ((unsigned int) i < n) { 
 			scaux = g_queue_peek_nth (self->scmd, i);
 			if (i != 0)
 				bcatcstr (result, " |");
-			aux = scommand_to_string (scaux); /*almacenamos temporalmente*/
+			/*almacenamos temporalmente*/
+			aux = scommand_to_string (scaux);
 			bconcat (result, aux);
-			bdestroy (aux); /*libeeramos*/
+			bdestroy (aux); /*liberamos*/
 			scaux = NULL;
 			i++;
 		}
 	}
 	
 	if (blength (result) > 0 && !pipeline_get_wait (self)) {
+	/* impresión de modo espera/no_espera */
 		bcatcstr (result, " &");
 	} else if (blength (result) <= 0) {
+	/* caso "no hay nada en el pipeline" */
 		bdestroy (result);
 	}
 	
