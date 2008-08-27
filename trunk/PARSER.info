@@ -1,7 +1,12 @@
 **********************	QUE HAY QUE HACERLE	***********************
-* Corregir el tema del parseo, lo hace mal, toma por adelantado el tipo de
-"STATE".
 * Revisar la "dependencia" con el built in.
+* Tener en cuenta los nombres de los STATE, habria que ponerle PARSER_STATE_EXIT.
+(osea agregar PARSER_ a los estados).
+* Fijarse en la funcion parse_set_state que retorna un numero de error, hay que
+determinar esos numeros de errores, para ver si despues dentro de la estructura
+del parser lo "almacenamos" y puede ser leido desde el baash.c.
+* Modificar los printf de errores en parse_pipeline, y ademas fijarse que se 
+reemplaza el self->err cuando se hace un parse_set_state.
 
 
 **********************	ESTRUCTURA GENERAL	************************
@@ -31,4 +36,6 @@ lo dice la consigna desde el stdin.
 	* Fijarse el tema de cuando devuelve el pipeline, que no se puede llegar
 a los scommand, por lo que se genera leaks, hay que recorrer todo el pipe e ir
 borrando todo.
+	* Mirar bien el tema de que cuando se encuentra un & se termina el
+reconocimiento de informacion. (deberia cambiarlo)
 

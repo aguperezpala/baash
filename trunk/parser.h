@@ -13,11 +13,10 @@
 /*definimos el stdin*/
 #define PARSER_IN stdin
 
-/*caracter que determina el fin de la linea, osea la serie de caracteres*/
-/*tener en cuenta que debe ser un char: const char PARSER_END_LINE = '&'*/
-/*#define PARSER_END_LINE "&" */
-/*const char PARSER_END_LINE = '&';*/
-
+/*tenemos que tener en cuenta que el parser va a dejar de verificar cuando 
+ *encuentre o un \n o un &, una vez encontrado alguno de esos dos caracteres
+ *deja de parsear
+*/
 /*estos caracteres nos dicen si hay un fin de comando, teniendo en cuenta BLANK
  *de LEXER
 */
@@ -26,14 +25,25 @@
 
 
 typedef struct parser_s parser;
+
+
 typedef enum {
-	STATE_EXIT,   /* salimos */
-	STATE_CMD,    /* es un comando o un argumento */
-	STATE_DIR_IN, /* ES UN DIR_IN */
-	STATE_DIR_OUT,/* ES UN DIR_OUT */
-	STATE_PIPE,   /* ES UN PIPE */
-	STATE_NO_WAIT /* termina */
+	PARSER_NO_ERROR, /*hay error*/
+	PARSER_ERROR	 /*no hay error*/
+	PARSER_ERROR_NI_DIR_IN,
+	PARSER_ERROR_NO_DIR_OUT,
+	PARSER_ERROR_SINTAXIS /*error desconocido*/
+} parser_error;
+
+typedef enum {
+	PARSER_STATE_EXIT,   /* salimos */
+	PARSER_STATE_CMD,    /* es un comando o un argumento */
+	PARSER_STATE_DIR_IN, /* ES UN DIR_IN */
+	PARSER_STATE_DIR_OUT,/* ES UN DIR_OUT */
+	PARSER_STATE_PIPE,   /* ES UN PIPE */
+	PARSER_STATE_NO_WAIT /* termina */
 } parser_state;
+
 
 
 parser* parser_new (void);
@@ -55,20 +65,33 @@ pipeline* parse_pipeline (parser* self);
 	REQUIRES:
 		self != NULL
 	ENSURES:
-		result->state = STATE_CMD // siempre empieza con comando
+		result->state = PARSER_STATE_CMD // siempre empieza con comando
 		result != NULL
 */
 
 /************ misc	******/
 
-bool continue_reading (bstring endl);
-/* funcion que determina si tiene que seguir leyendo o no
- * en caso de endl ser NULL => result = false
+parser_error parser_set_state (parser* self);
+/* esta funcion setea el "estado proximo" del parser, para saber donde tiene
+ * que introducir el siguiente "cmd" obtenido de la cadena de caracteres
+ 	REQUIRES:
+ 		self != NULL
+ *	
+ * en caso de error setea en PARSER_STATE_EXIT
+ * returns ERR_NUM 
 */
 
-parser_state get_state (bstring endl);
-/* no nos hace falta ningun "requerimiento" para llamar a esta funcion
- * returns: estado "proximo" que determina que tiene que hacer el parser
-*/
-
+bstring parser_get_bstrcmd (parser* self);
+/* Esta funcion nos devuelve el nombre del cmd/args/dirout/dirin, que luego
+ * segun el "state" del parser va a determinar su accion.
+ 	REQUIRES:
+ 		self != NULL
+ 	returns:
+ 		NULL => si no hay nada que devolver o hay un "error"
+ 		bstring => caso contrario
+ 		
+ 	se podria decir que se asegura en todo momento que no se haya terminado
+ 	de leer la cadena de caracteres, en caso de haberse terminado returns NULL
+ 	
+ */
 #endif
