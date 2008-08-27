@@ -1,8 +1,7 @@
 TARGET=baash
 CC=gcc
-GLIB_CFLAGS = -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include/
-CFLAGS+= -ansi -Wall -Wextra -Wdeclaration-after-statement -Wbad-function-cast -Wcast-qual -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wno-unused-parameter -Werror -pedantic -g $(GLIB_CFLAGS)
-LDFLAGS=-lglib-2.0
+CFLAGS+= -ansi -Wall -Wextra -Wdeclaration-after-statement -Wbad-function-cast -Wcast-qual -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wno-unused-parameter -Werror -pedantic -g `pkg-config --cflags glib-2.0`
+LDFLAGS=`pkg-config --libs glib-2.0`
 SOURCES=$(shell echo *.c)
 BSTRING_OBJECTS=bstring/bstrlib.o
 OBJECTS=$(SOURCES:.c=.o)

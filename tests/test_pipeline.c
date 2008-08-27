@@ -73,8 +73,6 @@ START_TEST (test_to_string_null)
 END_TEST
 
 
-/* Testeo de funcionalidad */
-
 /* Crear y destruir */
 START_TEST (test_new_destroy)
 {
@@ -83,12 +81,24 @@ START_TEST (test_new_destroy)
 }
 END_TEST
 
+/* Testeo de funcionalidad */
+
+static void setup (void) {
+	pipe = pipeline_new ();
+}
+
+static void teardown (void) {
+	if (pipe != NULL) {
+		pipeline_destroy (pipe);
+		pipe = NULL;
+	}
+}
+
 /* is_empty sea acorde a lo que agregamos y quitamos */
 START_TEST (test_adding_emptying)
 {
 	unsigned int i = 0;
 	scommand *scmd = scommand_new ();
-	pipe = pipeline_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless ((i==0) == pipeline_is_empty (pipe));
 		pipeline_push_back (pipe, scmd);
@@ -98,7 +108,6 @@ START_TEST (test_adding_emptying)
 		pipeline_pop_front (pipe);
 	}
 	fail_unless (pipeline_is_empty (pipe));
-	pipeline_destroy (pipe); pipe = NULL;
 	scommand_destroy (scmd);
 }
 END_TEST
@@ -108,7 +117,6 @@ START_TEST (test_adding_emptying_length)
 {
 	unsigned int i = 0;
 	scommand *scmd = scommand_new ();
-	pipe = pipeline_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless (i == pipeline_length (pipe));
 		pipeline_push_back (pipe, scmd);
@@ -118,7 +126,6 @@ START_TEST (test_adding_emptying_length)
 		pipeline_pop_front (pipe);
 	}
 	fail_unless (0 == pipeline_length (pipe));
-	pipeline_destroy (pipe); pipe = NULL;
 	scommand_destroy (scmd);
 }
 END_TEST
@@ -134,7 +141,6 @@ START_TEST (test_fifo)
 	for (i=0; i<MAX_LONG; i++) {
 		scmds[i] = scommand_new ();
 	}
-	pipe = pipeline_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		pipeline_push_back (pipe, scmds[i]);
 	}
@@ -145,7 +151,6 @@ START_TEST (test_fifo)
 	for (i=0; i<MAX_LONG; i++) {
 		free (scmds[i]);
 	}
-	pipeline_destroy (pipe); pipe = NULL;
 }
 END_TEST
 
@@ -154,12 +159,10 @@ START_TEST (test_front_idempotent)
 {
 	unsigned int i = 0;
 	scommand *scmd = scommand_new ();
-	pipe = pipeline_new ();
 	pipeline_push_back (pipe, scmd);
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless (pipeline_front (pipe) == scmd);
 	}
-	pipeline_destroy (pipe); pipe = NULL;
 	scommand_destroy (scmd);
 }
 END_TEST
@@ -168,10 +171,8 @@ END_TEST
 START_TEST (test_front_is_back)
 {
 	scommand *scmd = scommand_new ();
-	pipe = pipeline_new ();
 	pipeline_push_back (pipe, scmd);
 	fail_unless (pipeline_front (pipe)==scmd);
-	pipeline_destroy (pipe); pipe = NULL;
 	scommand_destroy (scmd);
 }
 END_TEST
@@ -181,11 +182,9 @@ START_TEST (test_front_is_not_back)
 {
 	scommand *scmd0 = scommand_new ();
 	scommand *scmd1 = scommand_new ();
-	pipe = pipeline_new ();
 	pipeline_push_back (pipe, scmd0);
 	pipeline_push_back (pipe, scmd1);
 	fail_unless (pipeline_front (pipe) != scmd1);
-	pipeline_destroy (pipe); pipe = NULL;
 	scommand_destroy (scmd0);
 	scommand_destroy (scmd1);
 }
@@ -193,12 +192,10 @@ END_TEST
 
 START_TEST (test_wait)
 {
-	pipe = pipeline_new ();
 	pipeline_set_wait (pipe, true);
 	fail_unless (pipeline_get_wait (pipe));
 	pipeline_set_wait (pipe, false);
 	fail_unless (!pipeline_get_wait (pipe));
-	pipeline_destroy (pipe); pipe = NULL;
 }
 END_TEST
 
@@ -206,11 +203,9 @@ END_TEST
 START_TEST (test_to_string_empty)
 {
 	bstring str = NULL;
-	pipe = pipeline_new ();
 	str = pipeline_to_string (pipe);
 	fail_unless (blength (str) == 0);
 	bdestroy (str); str = NULL;
-	pipeline_destroy (pipe); pipe = NULL;
 }
 END_TEST
 
@@ -223,7 +218,6 @@ START_TEST (test_to_string)
 	bstring s = NULL, str = NULL;
 	scommand *scmd = scommand_new ();
 	scommand_push_back (scmd, s = bfromcstr ("gtk-fuse"));
-	pipe = pipeline_new ();
 	/* MAX_LONG veces el mismo comando simple */
 	for (i=0; i<MAX_LONG; i++) {
 		pipeline_push_back (pipe, scmd);
@@ -246,7 +240,6 @@ START_TEST (test_to_string)
 	
 	bdestroy (s); bdestroy (str);
 	scommand_destroy (scmd);
-	pipeline_destroy (pipe); pipe = NULL;	
 }
 END_TEST
 
@@ -256,10 +249,10 @@ Suite *pipeline_suite (void)
 {
 	Suite *s = suite_create ("pipeline");
 	TCase *tc_preconditions = tcase_create ("Precondition");
+	TCase *tc_creation = tcase_create ("Creation");
 	TCase *tc_functionality = tcase_create ("Functionality");
 
 	/* Precondiciones */
-	tcase_add_checked_fixture (tc_preconditions, NULL, NULL);
 	tcase_add_test_raise_signal (tc_preconditions, test_destroy_null, SIGABRT);
 	tcase_add_test_raise_signal (tc_preconditions, test_push_back_null, SIGABRT);
 	tcase_add_test_raise_signal (tc_preconditions, test_push_back_scmd_null, SIGABRT);
@@ -271,9 +264,12 @@ Suite *pipeline_suite (void)
 	tcase_add_test_raise_signal (tc_preconditions, test_to_string_null, SIGABRT);
 	suite_add_tcase (s, tc_preconditions);
 
+	/* Creation */
+	tcase_add_test (tc_creation, test_new_destroy);
+	suite_add_tcase (s, tc_creation);
+
 	/* Funcionalidad */
-	tcase_add_checked_fixture (tc_functionality, NULL, NULL);
-	tcase_add_test (tc_functionality, test_new_destroy);
+	tcase_add_checked_fixture (tc_functionality, setup, teardown);
 	tcase_add_test (tc_functionality, test_adding_emptying);
 	tcase_add_test (tc_functionality, test_adding_emptying_length);
 	tcase_add_test (tc_functionality, test_fifo);

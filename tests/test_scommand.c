@@ -111,8 +111,6 @@ START_TEST (test_to_string_null)
 END_TEST
 
 
-/* Testeo de funcionalidad */
-
 /* Crear y destruir */
 START_TEST (test_new_destroy)
 {
@@ -121,12 +119,24 @@ START_TEST (test_new_destroy)
 }
 END_TEST
 
+/* Testeo de funcionalidad */
+
+static void setup (void) {
+	scmd = scommand_new ();
+}
+
+static void teardown (void) {
+	if (scmd != NULL) {
+		scommand_destroy (scmd);
+		scmd = NULL;
+	}
+}
+
 /* is_empty sea acorde a lo que agregamos y quitamos */
 START_TEST (test_adding_emptying)
 {
 	unsigned int i = 0;
 	bstring s = bfromcstr ("123");
-	scmd = scommand_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless ((i==0) == scommand_is_empty (scmd));
 		scommand_push_front (scmd, s);
@@ -137,7 +147,6 @@ START_TEST (test_adding_emptying)
 	}
 	fail_unless (scommand_is_empty (scmd));
 	bdestroy (s);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -146,7 +155,6 @@ START_TEST (test_adding_emptying_length)
 {
 	unsigned int i = 0;
 	bstring str = bfromcstr ("123");
-	scmd = scommand_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless (i == scommand_length (scmd));
 		scommand_push_back (scmd, str);
@@ -156,7 +164,6 @@ START_TEST (test_adding_emptying_length)
 		scommand_pop_front (scmd);
 	}
 	fail_unless (0 == scommand_length (scmd));
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -172,7 +179,6 @@ START_TEST (test_fifo)
 		strings[i] = bformat ("%d", i);
 	}
 	/* strings = ["0","1", ..., "127"] */
-	scmd = scommand_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		scommand_push_back (scmd, strings[i]);
 	}
@@ -187,7 +193,6 @@ START_TEST (test_fifo)
 		bdestroy (strings[i]);
 	}
 	free (strings);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -203,7 +208,6 @@ START_TEST (test_lifo)
 		strings[i] = bformat ("%d", i);
 	}
 	/* strings = ["0","1", ..., "127"] */
-	scmd = scommand_new ();
 	for (i=0; i<MAX_LONG; i++) {
 		scommand_push_front (scmd, strings[i]);
 	}
@@ -218,7 +222,6 @@ START_TEST (test_lifo)
 		bdestroy (strings[i]);
 	}
 	free (strings);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -227,13 +230,11 @@ START_TEST (test_front_idempotent)
 {
 	unsigned int i = 0;
 	bstring s = NULL;
-	scmd = scommand_new ();
 	scommand_push_front (scmd, s=bfromcstr ("123"));
 	for (i=0; i<MAX_LONG; i++) {
 		fail_unless (biseq (scommand_front (scmd), s) == 1);
 	}
 	bdestroy (s);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -241,11 +242,9 @@ END_TEST
 START_TEST (test_front_is_back)
 {
 	bstring s = NULL;
-	scmd = scommand_new();
 	scommand_push_back (scmd, s=bfromcstr ("123"));
 	fail_unless (biseq (scommand_front (scmd), s) == 1);
 	bdestroy (s);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -253,24 +252,20 @@ END_TEST
 START_TEST (test_front_is_not_back)
 {
 	bstring s1 = NULL, s2 = NULL;
-	scmd = scommand_new ();
 	scommand_push_back(scmd, s1=bfromcstr ("123"));
 	scommand_push_back(scmd, s2=bfromcstr ("456"));
 	fail_unless (biseq (scommand_front (scmd), s2) != 1);
 	bdestroy (s1); bdestroy (s2);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
 /* Que almacene el booleanito */
 START_TEST (test_builtin)
 {
-	scmd = scommand_new ();
 	scommand_set_builtin (scmd, true);
 	fail_unless (scommand_get_builtin (scmd));
 	scommand_set_builtin (scmd, !true);
 	fail_unless (!scommand_get_builtin (scmd));
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -279,7 +274,6 @@ END_TEST
 START_TEST (test_redir)
 {
 	bstring s1 = NULL, s2 = NULL;
-	scmd = scommand_new ();
 	scommand_set_redir_in (scmd, s1=bfromcstr ("123"));
 	scommand_set_redir_out (scmd, s2=bfromcstr ("456"));
 	/* Los redirectores tienen que ser distintos */
@@ -292,7 +286,6 @@ START_TEST (test_redir)
 	scommand_set_redir_out (scmd, s1);
 	fail_unless (biseq (scommand_get_redir_in (scmd), scommand_get_redir_out (scmd)) == 1);
 	bdestroy (s1); bdestroy (s2);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -301,11 +294,9 @@ END_TEST
 START_TEST (test_to_string_empty)
 {
 	bstring str = NULL;
-	scmd = scommand_new ();
 	str = scommand_to_string (scmd);
 	fail_unless (blength (str) == 0);
 	bdestroy (str);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -324,7 +315,6 @@ START_TEST (test_to_string)
 	}
 	/* strings = ["0","1", ..., "127"] */
 
-	scmd = scommand_new ();
 	assert (MAX_LONG>2);
 	/* comando "0 1 2 .... N-3 < N-2 > N-1" tiene que tener todos los números y los dos piquitos */
 	for (i=0; i<MAX_LONG; i++) {
@@ -360,7 +350,6 @@ START_TEST (test_to_string)
 		bdestroy (strings[i]);
 	}
 	free (strings);
-	scommand_destroy (scmd); scmd = NULL;
 }
 END_TEST
 
@@ -370,10 +359,10 @@ Suite *scommand_suite (void)
 {
 	Suite *s = suite_create ("scommand");
 	TCase *tc_preconditions = tcase_create ("Precondition");
+	TCase *tc_creation = tcase_create ("Creation");
 	TCase *tc_functionality = tcase_create ("Functionality");
 
 	/* Precondiciones */
-	tcase_add_checked_fixture (tc_preconditions, NULL, NULL);
 	tcase_add_test_raise_signal (tc_preconditions, test_destroy_null, SIGABRT);
 	tcase_add_test_raise_signal (tc_preconditions, test_push_back_null, SIGABRT);
 	tcase_add_test_raise_signal (tc_preconditions, test_push_back_argument_null, SIGABRT);
@@ -391,9 +380,12 @@ Suite *scommand_suite (void)
 	tcase_add_test_raise_signal (tc_preconditions, test_to_string_null, SIGABRT);
 	suite_add_tcase (s, tc_preconditions);
 
+	/* Creation */
+	tcase_add_test (tc_creation, test_new_destroy);
+	suite_add_tcase (s, tc_creation);
+
 	/* Funcionalidad */
-	tcase_add_checked_fixture (tc_functionality, NULL, NULL);
-	tcase_add_test (tc_functionality, test_new_destroy);
+	tcase_add_checked_fixture (tc_functionality, setup, teardown);
 	tcase_add_test (tc_functionality, test_adding_emptying);
 	tcase_add_test (tc_functionality, test_adding_emptying_length);
 	tcase_add_test (tc_functionality, test_fifo);

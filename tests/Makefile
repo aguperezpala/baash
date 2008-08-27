@@ -3,7 +3,7 @@
 TARGET=runner
 CC=gcc
 CFLAGS+= -I.. -ansi -Wall -Wextra -Wdeclaration-after-statement -Wbad-function-cast -Wcast-qual -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wno-unused-parameter -Werror -pedantic -g
-LDFLAGS=-lcheck -lglib-2.0
+LDFLAGS=-lcheck `pkg-config --libs glib-2.0`
 SOURCES=$(shell echo *.c)
 BSTRING_OBJECTS=../bstring/bstrlib.o
 OBJECTS=$(SOURCES:.c=.o)
