@@ -1,0 +1,34 @@
+**********************	QUE HAY QUE HACERLE	***********************
+* Corregir el tema del parseo, lo hace mal, toma por adelantado el tipo de
+"STATE".
+* Revisar la "dependencia" con el built in.
+
+
+**********************	ESTRUCTURA GENERAL	************************
+Vamos a tomar al parser como una estructura con un lexer que nos va a servir 
+para desfragmentar la cadena de texto (string proveniente del stdin) y 
+convertirlo en un pipeline.
+
+Posiblemente podriamos incluir un "int state" que nos diga en que tipo de estado
+se encuentra (ya parseo, tiene el pipeline listo para devolver, hubo un error,
+etc).
+
+
+
+
+
+
+
+
+
+
+
+
+
+******************	TENER EN CUENTA		***********************
+	* El tema de como controlar el flujo de stdin ya que el parser lee, como
+lo dice la consigna desde el stdin.
+	* Fijarse el tema de cuando devuelve el pipeline, que no se puede llegar
+a los scommand, por lo que se genera leaks, hay que recorrer todo el pipe e ir
+borrando todo.
+
