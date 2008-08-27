@@ -96,15 +96,17 @@ pipeline* parse_pipeline (parser* self){
 	
 	while (self->state != STATE_EXIT && self->state != STATE_NO_WAIT){
 		/*mientras tengamos que leer*/
+		/*borramos los "posibles" espacios en blanco anteriores*/
+		lexer_skip (self->lex, BLANK);
 		
 		lexer_next_to (self->lex, PARSER_END_CMD);/*leemos*/
 		self->strtmp = lexer_item (self->lex); /*almacenamos temp*/
-	
+		printf ("\nself->strtmp: %s\t",self->strtmp->data);
 		/*ahora obtenemos el ultimo caracter, y queda almacenado en
 		*lexer_item ();*/
 		lexer_next_char (self->lex, PARSER_END_CMD);
 		aux = lexer_item (self->lex);
-			
+		printf ("aux: %s\t",aux->data);
 		/*ACA TENEMOS QUE CHEQUEAR QUE self->strtmp != NULL, creo quede
 		 * nunca sucede pero revisar mejor */
 		
@@ -128,6 +130,8 @@ pipeline* parse_pipeline (parser* self){
 				/*introducimos el scommand*/
 				pipeline_push_back (self->pipe, self->scmd);
 				self->scmd = scommand_new (); /*generamos nuevo*/
+				/*y le introducimos la ultima info tomada*/
+				scommand_push_back (self->scmd, self->strtmp);
 				break;
 				
 			case STATE_EXIT:
@@ -139,11 +143,11 @@ pipeline* parse_pipeline (parser* self){
 				break;
 			
 		}
-		/*salteamos los espacios en blanco*/
+		/*salteamos los espacios en blanco "posteriores"*/
 		lexer_skip (self->lex, BLANK);
-		
+		printf ("state_ant: %d\t",self->state);
 		self->state = get_state (aux); /*obtenemos el estado "proximo"*/
-				
+		printf ("state_post: %d\n",self->state);
 		bdestroy (aux); /*eliminamos aux*/
 	}
 	
