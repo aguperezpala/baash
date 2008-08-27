@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "command.h"
 
-
+/*
 int main (void)
 {
 	pipeline *pipe = NULL;
@@ -18,7 +18,6 @@ int main (void)
 	if (aux->data != NULL)
 		printf ("pipe = %s\n", aux->data);
 	
-	bdestroy (aux);
 	scmd1 = scommand_new ();
 	scmd2 = scommand_new ();
 	
@@ -35,11 +34,11 @@ int main (void)
 	scommand_push_back (scmd1, str1);
 	scommand_push_back (scmd1, str5);
 	scommand_set_redir_in (scmd1, str3);
-	/* scmd1 = (false,["com1","arg1"],"","archivo_entrada") */
+	 scmd1 = (false,["com1","arg1"],"","archivo_entrada") 
 	scommand_push_front (scmd2, str6);
 	scommand_push_front (scmd2, str2);
 	scommand_set_redir_out (scmd2, str4);
-	/* scmd2 = (false,["com2","arg2"],"archivo_salida","") */
+	 scmd2 = (false,["com2","arg2"],"archivo_salida","") 
 	
 	bdestroy (aux);
 	aux = scommand_to_string (scmd1);
@@ -56,17 +55,17 @@ int main (void)
 	pipeline_push_back (pipe, scmd1);
 	pipeline_push_back (pipe, scmd2);
 	pipeline_set_wait (pipe, b);
-	/* pipe = { [ (false,["com1","arg1"],"","archivo_entrada") , 
-		    (false,["com2","arg2"],"archivo_salida","") ] , false}  */
+	 pipe = { [ (false,["com1","arg1"],"","archivo_entrada") , 
+		    (false,["com2","arg2"],"archivo_salida","") ] , false}  
 	bdestroy (aux);
 	aux = pipeline_to_string (pipe);
 	assert (aux != NULL);
 	if (aux->data != NULL)
 		printf ("pipe = %s\n",aux->data);
 	
+	pipeline_destroy (pipe);
 	scommand_destroy (scmd1);
 	scommand_destroy (scmd2);
-	pipeline_destroy (pipe);
 	bdestroy (aux);
 	bdestroy (str1);
 	bdestroy (str2);
@@ -77,5 +76,5 @@ int main (void)
 	bdestroy (dummy);
 	
 	return 0;
-}
+}*/
 

@@ -14,18 +14,18 @@ test_scommand.c:89:P:Precondition:test_get_builtin_null:0: Passed
 test_scommand.c:95:P:Precondition:test_get_redir_in_null:0: Passed
 test_scommand.c:101:P:Precondition:test_get_redir_out_null:0: Passed
 test_scommand.c:107:P:Precondition:test_to_string_null:0: Passed
-test_scommand.c:117:P:Functionality:test_new_destroy:0: Passed
-test_scommand.c:138:P:Functionality:test_adding_emptying:0: Passed
-test_scommand.c:158:P:Functionality:test_adding_emptying_length:0: Passed
-test_scommand.c:183:P:Functionality:test_fifo:0: Passed
-test_scommand.c:214:P:Functionality:test_lifo:0: Passed
-test_scommand.c:233:P:Functionality:test_front_idempotent:0: Passed
+test_scommand.c:115:P:Creation:test_new_destroy:0: Passed
+test_scommand.c:148:P:Functionality:test_adding_emptying:0: Passed
+test_scommand.c:166:P:Functionality:test_adding_emptying_length:0: Passed
+test_scommand.c:189:P:Functionality:test_fifo:0: Passed
+test_scommand.c:218:P:Functionality:test_lifo:0: Passed
+test_scommand.c:235:P:Functionality:test_front_idempotent:0: Passed
 test_scommand.c:246:P:Functionality:test_front_is_back:0: Passed
-test_scommand.c:259:P:Functionality:test_front_is_not_back:0: Passed
-test_scommand.c:272:P:Functionality:test_builtin:0: Passed
-test_scommand.c:293:P:Functionality:test_redir:0: Passed
-test_scommand.c:306:P:Functionality:test_to_string_empty:0: Passed
-test_scommand.c:354:P:Functionality:test_to_string:0: Passed
+test_scommand.c:257:P:Functionality:test_front_is_not_back:0: Passed
+test_scommand.c:268:P:Functionality:test_builtin:0: Passed
+test_scommand.c:287:P:Functionality:test_redir:0: Passed
+test_scommand.c:298:P:Functionality:test_to_string_empty:0: Passed
+test_scommand.c:344:P:Functionality:test_to_string:0: Passed
 Running suite pipeline
 test_pipeline.c:16:P:Precondition:test_destroy_null:0: Passed
 test_pipeline.c:23:P:Precondition:test_push_back_null:0: Passed
@@ -36,15 +36,15 @@ test_pipeline.c:51:P:Precondition:test_is_empty_null:0: Passed
 test_pipeline.c:57:P:Precondition:test_front_null:0: Passed
 test_pipeline.c:63:P:Precondition:test_get_wait:0: Passed
 test_pipeline.c:69:P:Precondition:test_to_string_null:0: Passed
-test_pipeline.c:79:P:Functionality:test_new_destroy:0: Passed
-test_pipeline.c:100:P:Functionality:test_adding_emptying:0: Passed
-test_pipeline.c:120:P:Functionality:test_adding_emptying_length:0: Passed
-test_pipeline.c:142:P:Functionality:test_fifo:0: Passed
-test_pipeline.c:160:P:Functionality:test_front_idempotent:0: Passed
-test_pipeline.c:173:P:Functionality:test_front_is_back:0: Passed
+test_pipeline.c:77:P:Creation:test_new_destroy:0: Passed
+test_pipeline.c:110:P:Functionality:test_adding_emptying:0: Passed
+test_pipeline.c:128:P:Functionality:test_adding_emptying_length:0: Passed
+test_pipeline.c:148:P:Functionality:test_fifo:0: Passed
+test_pipeline.c:164:P:Functionality:test_front_idempotent:0: Passed
+test_pipeline.c:175:P:Functionality:test_front_is_back:0: Passed
 test_pipeline.c:187:P:Functionality:test_front_is_not_back:0: Passed
-test_pipeline.c:200:P:Functionality:test_wait:0: Passed
-test_pipeline.c:211:P:Functionality:test_to_string_empty:0: Passed
-test_pipeline.c:245:P:Functionality:test_to_string:0: Passed
+test_pipeline.c:198:P:Functionality:test_wait:0: Passed
+test_pipeline.c:207:P:Functionality:test_to_string_empty:0: Passed
+test_pipeline.c:239:P:Functionality:test_to_string:0: Passed
 Results for all suites run:
 100%: Checks: 46, Failures: 0, Errors: 0

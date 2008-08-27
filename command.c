@@ -50,25 +50,11 @@ scommand *scommand_new (void)
 
 void scommand_destroy (scommand *self)
 {
-/*	bstring aux = NULL;*/
-	unsigned int n = 0, i = 0;
-	bstring aux = NULL;
 	/* REQUIRES */
 	assert (self != NULL);
 	
-	bdestroy (self->dirOut);
-	bdestroy (self->dirIn);
-	
 	if (self->args != NULL) {
-		n = g_queue_get_length (self->args);
-		/* si hay argumentos se liberan antes de destruir la cola*/
-		while (i < n){
-			if ((aux = g_queue_peek_nth (self->args,i)) != NULL) {
-				bdestroy (aux);
-				aux = NULL;
-			}
-			i++;
-		}
+		g_queue_clear (self->args);
 		g_queue_free (self->args);
 	}
 	
@@ -228,8 +214,9 @@ bstring scommand_to_string (const scommand *self)
 	/* si hay cadenas en el scommand las concatenaremos de a una
 	 * en result, con una separacion de un espacio entre ellas
 	 */
-		aux = g_queue_peek_nth (self->args, i);
-		bcatcstr (result, " ");
+		aux = g_queue_peek_nth (self->args, i);	
+		if (i>0)
+			bcatcstr (result, " ");
 		bconcat (result, aux);
 		aux = NULL;
 		i++;
@@ -246,9 +233,6 @@ bstring scommand_to_string (const scommand *self)
 		bconcat (result, aux);
 		aux = NULL;
 	}
-	/* caso "no hay comando" */
-	if (blength (result) <= 0)
-		bdestroy (result);
 	
 	/* ENSURES */
 	assert (scommand_is_empty (self) || (blength (result)>0));
@@ -288,16 +272,14 @@ pipeline *pipeline_new (void)
 
 void pipeline_destroy (pipeline *self)
 {
-	
+	/* destructor del pipeline, no toca los scommands que guarda */
 	/* REQUIRES */
 	assert (self!=NULL);
 	
-	
-	
-	if (self->scmd != NULL) {
-		/*luego liberamos la misma cola*/
+	if (self->scmd != NULL)
+		/* solo liberamos la cola, los scommands no nos pertencen */
+		g_queue_clear (self->scmd);
 		g_queue_free (self->scmd);
-	}
 	
 	free (self);
 }
@@ -399,8 +381,8 @@ bstring pipeline_to_string (const pipeline *self)
 	/* concatenamos todos los scommand, con pipes '|' para separarlos */
 		while ((unsigned int) i < n) { 
 			scaux = g_queue_peek_nth (self->scmd, i);
-			if (i != 0)
-				bcatcstr (result, " |");
+			if (i>0)
+				bcatcstr (result, " | ");
 			/*almacenamos temporalmente*/
 			aux = scommand_to_string (scaux);
 			bconcat (result, aux);
@@ -410,13 +392,9 @@ bstring pipeline_to_string (const pipeline *self)
 		}
 	}
 	
-	if (blength (result) > 0 && !pipeline_get_wait (self)) {
+	if (blength (result) > 0 && !pipeline_get_wait (self))
 	/* impresión de modo espera/no_espera */
 		bcatcstr (result, " &");
-	} else if (blength (result) <= 0) {
-	/* caso "no hay nada en el pipeline" */
-		bdestroy (result);
-	}
 	
 	/* ENSURES */
 	assert (pipeline_is_empty (self) || pipeline_get_wait (self) ||

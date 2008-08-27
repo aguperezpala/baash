@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "command.h"
 
-/*
+
 int main (void)
 {
 	scommand *scmd = NULL;
@@ -44,7 +44,7 @@ int main (void)
 	scommand_set_redir_out (scmd, str3);
 	str4 = bfromcstr ("archivo_entrada");
 	scommand_set_redir_in (scmd, str4);
-	/ scmd = ( 123 456 < archivo_entrada > archivo_salida) /
+	/* scmd = ( 123 456 < archivo_entrada > archivo_salida) */
 	
 	aux = scommand_to_string (scmd);
 	assert (aux != NULL);
@@ -59,6 +59,6 @@ int main (void)
 	bdestroy (aux);
 
 	return 0;
-}*/
+}
 
 
