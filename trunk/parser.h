@@ -28,9 +28,9 @@ typedef struct parser_s parser;
 
 
 typedef enum {
-	PARSER_NO_ERROR, /*hay error*/
-	PARSER_ERROR	 /*no hay error*/
-	PARSER_ERROR_NI_DIR_IN,
+	PARSER_NO_ERROR, /*no hay error*/
+	PARSER_ERROR,	 /*hay error*/
+	PARSER_ERROR_NO_DIR_IN,
 	PARSER_ERROR_NO_DIR_OUT,
 	PARSER_ERROR_SINTAXIS /*error desconocido*/
 } parser_error;

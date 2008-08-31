@@ -5,16 +5,16 @@
 
 
 struct parser_s {
-	Lexer* lex; /*lexer para el parseo*/
-	bstring strtmp; /*vamos a almacenar temporalmente lo obtenido del lexer*/
-	parser_state state; /*vamos a determinar 5 estados:
-			0->parar de leer = SALIR
-			1->comando o argumentos
-			2->dirIn
-			3->dirOut
-			4->pipeline
-			5->no_wait
-		   */
+	Lexer* lex; 		/*lexer para el parseo*/
+	bstring strtmp; 	/*vamos a almacenar temporalmente lo obtenido del lexer*/
+	parser_state state; 	/*vamos a determinar 5 estados:
+				0->parar de leer = SALIR
+				1->comando o argumentos
+				2->dirIn
+				3->dirOut
+				4->pipeline
+				5->no_wait
+			   */
 	parser_error err;
 };
 
@@ -26,8 +26,8 @@ parser* parser_new (void){
 	
 	assert (result != NULL);
 	
-	result->err = PARSER_NO_ERROR; /*no tenemos ningun error*/
-	result->lex = lexer_new (PARSER_IN);/*le pasamos "stdin"*/ 
+	result->err = PARSER_NO_ERROR; 		/*no tenemos ningun error*/
+	result->lex = lexer_new (PARSER_IN);	/*le pasamos "stdin"*/ 
 	/*se asegura lexer de que se haya creado*/
 	result->strtmp = NULL; /*no lo inicializamos*/
 	result->state = PARSER_STATE_EXIT;
@@ -63,11 +63,13 @@ parser_error parser_set_state (parser* self){
 	*/
 	lexer_next_char (self->lex, PARSER_END_CMD);
 	
-	if (!lexer_is_off (self->lex))
-		if ((aux = lexer_item (self->lex)) == NULL){ /*tomamos el caracter*/
+	if (!lexer_is_off (self->lex)) {
+		aux = lexer_item (self->lex);
+		if (aux == NULL) { /*tomamos el caracter*/
 			self->state = PARSER_STATE_EXIT;
 			return PARSER_ERROR;
 		}
+	}
 	
 	if (bstrchrp (aux, '\n', 0) == 0){
 		self->state = PARSER_STATE_EXIT;
@@ -97,10 +99,7 @@ bstring parser_get_bstrcmd (parser* self){
 	bstring result = NULL;
 	
 	assert (self != NULL);
-	
-	/*tenemos que tener en cuenta que cada vez que vamos a usar alguna func.
-	 *del lexer tenemos que corroborar que este "prendido"
-	*/
+
 	/*primero vamos a limpiar los espacios en blanco*/
 	lexer_skip (self->lex, BLANK);
 	
