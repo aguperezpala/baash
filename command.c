@@ -276,10 +276,11 @@ void pipeline_destroy (pipeline *self)
 	/* REQUIRES */
 	assert (self!=NULL);
 	
-	if (self->scmd != NULL)
-		/* solo liberamos la cola, los scommands no nos pertencen */
+	if (self->scmd != NULL) {
+	/* solo liberamos la cola, los scommands no nos pertencen */
 		g_queue_clear (self->scmd);
 		g_queue_free (self->scmd);
+	}
 	
 	free (self);
 }
