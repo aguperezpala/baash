@@ -1,3 +1,5 @@
+#include "command.h"
+
 #ifndef EXECUTE_H
 #define EXECUTE_H
 
@@ -11,4 +13,4 @@
  * ENSURES:
  *	¡¡¡ Lots of happyness !!!
  */
-int exec_pipe (pipeline *pipe);
+int exec_pipe (pipeline *spipe , unsigned int spipe_len);
