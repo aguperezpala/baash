@@ -10,14 +10,103 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int exec_pipe (pipeline *spipe, unsigned int spipe_len)
+/* Para referencia ver la función en sí */
+int exec_long_pipe (pipeline *spipe, unsigned int spipe_len);
+
+/* Función para la ejecución de los pipes. Ejecuta pipelines de
+ * un solo comando. Si su argumento es más largo llama a la función
+ * interna auxiliar "exec_long_pipe" para hacer todo el trabajo.
+ */
+int exec_pipe (pipeline *pipe)
 {
-	/* variables para forkeo de hijos */
+	scommand *scmd = NULL;
+	pid_t child_pid = 0;
+	int exit_status = 0 , i = 0 , status = 0;
+	unsigned int pipe_len = 0 , scmd_len = 0;
+	bstring command = NULL; arg = NULL
+	bool must_wait = false;
+	
+	/* REQUIRES */
+	if (spipe == NULL)
+	{
+		perror ("NULL pipe provided\n");
+		exit(1);
+	}
+	
+	if (pipeline_is_empty (pipe))
+	/* no hay comandos, no se ejecuta nada, volvemos */
+		return exit_status;
+	
+	pipe_len = pipeline_length (pipe);
+	if (pipe_len == 1) {
+	/* Un comando solito, lo ejecutamos aquí */
+		must_wait = pipeline_get_wait (spipe);
+		scmd = pipeline_front (spipe)
+		cmd_len = scommand_length (scmd);
+		
+		if (scommand_get_builtin (scmd)) {
+		/* Comando interno, debe ejecutarlo el padre */
+		### TODO ESTO PUEDE REEMPLAZARLO EXE_CMD_BIN" ###
+			char *argv[cmd_len-1] = NULL;
+			/* Extraemos el comando */
+			command = scommand_front (scmd);
+			scommand_pop_front (scmd);
+			scommand_push_back (scmd, command);
+			/* Guardamos los (scmd_len-1) argumentos en argv */
+			for (i=0 ; i < scmd_len-1 ; i++) {
+				arg = scommand_front (scmd);
+				argv[i] = arg->data;
+				scommand_pop_front (scmd);
+				scommand_push_back (scmd, arg);
+				arg = NULL;
+			}
+			execv (command->data, argv);
+			/* Si llegamos acá algo anduvo mal */
+			perror ("Problems with given command\n");
+			exit(1);
+		} else {
+		/* Comando no-built-in: lo buscamos en el filesystem 
+		 * y hacemos que un hijo lo ejecute
+		 */
+			child_pid = fork();
+			if (child_pid < 0) {
+				perror ("Birth complications\n");
+				exit(1);
+			} else if (child_pid != 0 && must_wait) {
+			/* Soy padre y espero a mi hijo */
+				wait (&status)
+				if (status < 0) {
+					perror("Problems while waiting"
+						"for my child\n");
+					exit(1);
+				}
+			} else if (child_pid != 0 && !must_wait) {
+			/* Soy padre pero no espero nada */
+			### COMPLETAR MODO DE NO ESPERA ###
+			} else {
+			/* Soy hijo, ejecuto el comando */
+				exe_cmd_nbin (scmd, cmd_len, NULL, 0, 1);
+			}
+		}
+	} else {
+	/* Comando largo, derivamos a función auxiliar */
+		exit_status = exec_long_pipe (pipe, pipe_len);
+	}
+	
+	return exit_status;
+}
+
+/* Función interna auxiliar para ejecución de pipelines de más de un
+ * comando. Es la que hace el trabajo pesado, con creación de pipes y todo.
+ */
+int exec_long_pipe (pipeline *spipe, unsigned int spipe_len)
+{
+	/* Variables para forkeo de hijos */
 	pid_t child_pid = 0;
 	scommand *scmd = NULL;
 	bool must_wait = false , is_bin = false;
 	unsigned int scmd_len = 0 , i = 0;
-	/* variables para creación de pipes */
+	/* Variables para creación de pipes */
 	int **pipe_prev = NULL , **pipe_next = NULL;
 	int pipe_fd[spipe_len-2][2] = NULL;
 	int status = -1 , p_status = -1;
@@ -44,7 +133,7 @@ int exec_pipe (pipeline *spipe, unsigned int spipe_len)
 	
 	must_wait = pipeline_get_wait (spipe);
 	
-	/* creacióm de los hijos */
+	/* Creación de los hijos */
 	for (i=0 ; i < spipe_len ; i++)
 	{
 		scmd = pipeline_front (spipe);
@@ -54,27 +143,36 @@ int exec_pipe (pipeline *spipe, unsigned int spipe_len)
 		if (child_pid < 0) {
 			perror ("Birth complications\n");
 			exit(1);
-		} else if (child_pid != 0) {  /* proceso padre */
-			/* pasamos al siguiente comando */
+		} else if (child_pid != 0) {  /* Proceso padre */
+			/* Pasamos al siguiente comando */
 			pipeline_pop_front (spipe);
 			pipeline_push_back (spipe, scmd);
 			scmd = NULL;
-			/* desvinculamos los pipes */
+			/* Desvinculamos los pipes */
 			close (pipe_fd[i][0]);
 			close (pipe_fd[i][1]);
-		} else {  /* proceso hijo */
-			scmd_len = scommand_length (scmd);
-			exec_scmd (scmd, scmd_len, pipe_fd, spipe_len-1, i);
-		"EJECUTAR COMANDOS DEL SPIPE"
+		} else {  /* Proceso hijo */
+			if (scommand_get_builtin (scmd)) {
+				exe_cmd_bin (scmd);
+		### COMPLETAR CON MODO DE ESPERA ###
+			} else if (must_wait) {
+				scmd_len = scommand_length (scmd);
+				exe_cmd_nbin (scmd, scmd_len, pipe_fd,
+						spipe_len-1, i);
+			} else {
+				scmd_len = scommand_length (scmd);
+				exe_cmd_nbin (scmd, scmd_len, pipe_fd,
+						spipe_len-1, i);
+			}
 		}
 	}
-	
 	
 	return EXIT_SUCCESS;
 }
 
-void exec_scmd (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
-		unsigned int pipes_no, unsigned int cmd_no)
+/* Ejecución de un comando no interno */
+void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
+		   unsigned int pipes_no, unsigned int cmd_no)
 {
 	/* Variables para la ejecución */
 	bstring command = NULL , arg = NULL;
@@ -84,6 +182,9 @@ void exec_scmd (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 	bstring redir_in = NULL , redir_out = NULL;
 	int fd_in = 0 , fd_out = 0 , aux = 0;
 	int rd_flags = 0 , rd_perm = 0 , wr_flags = 0 , wr_perm = 0 ;
+	
+	/* REQUIRES */
+	assert (scmd != NULL);
 	
 	/* Flags y permisos para lectura/escritura de archivos */
 	rd_flags = O_RDONLY;
@@ -138,84 +239,31 @@ void exec_scmd (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 		switch (i) {
 			
 			case cmd_no-1:
-			/* pipe anterior, de aquí leeremos */
+			/* Pipe anterior, de aquí leeremos */
 				close (pipe_fd[i][1]);
 				if (redir_in != NULL) {
 					close (pipe_fd[i][0]);
 			break;
 				
 			case cmd_no:
-			/* aquí escribiremos */
+			/* Aquí escribiremos */
 				close (pipe_fd[i][0]);
 				if (redir_out != NULL) {
 					close (pipe_fd[i][1]);
 			break;
 				
 			default:
-			/* estos pipes no nos conciernen */
+			/* Estos pipes no nos conciernen */
 				close (pipe_fd[i][0]);
 				close (pipe_fd[i][1]);
 			break;
 		}
 	}
 	
-	/* al fin, ejecutamos el comando */
+	/* Al fin, ejecutamos el comando */
 	execv (command->data, argv);
-	/* si llega hasta acá algo anduvo mal */
+	/* Si llega hasta acá algo anduvo mal */
 	perror ("Problems with given command\n");
 	close
 	exit(1);
 }
-
-
-	/* ¿BASURA?  REVISAR - REVISAR - REVISAR  ¿BASURA?*/
-	if (spipe_len < 2) {
-	/* un comando solito, lo ejecutamos sin crear pipes */
-		must_wait = pipeline_get_wait (spipe);
-		scmd = pipeline_front (spipe)
-		is_bin = scommand_get_builtin (scmd);
-		fst_child = fork();
-		if (fst_child < 0) {
-			perror ("Birth complications\n");
-			exit(1);
-		} else if (fst_child == 0 && is_bin) {
-		/* soy el hijo , soy Built In */
-			exec_scmd_bin (scmd);
-		} else if (fst_child == 0 && !is_bin) {
-		/* soy el hijo , no soy Built In */
-			exec_scmd_nobin (scmd);
-		} else if (fst_child != 0 && must_wait) {
-		/* soy el padre , tengo que esperar */
-			wait (&status);
-			if (s < 0) {
-				perror("Problems while waiting for son\n");
-				exit(1);
-			}
-		} else if (fst_child != 0 && !must_wait) {
-		/* soy el padre , no espero nada */
-		"CORRER EL HIJO EN BACKGROUND"
-		"LEER CAPÍTULO 5 <INTERPROCESS COMUNICATION>"
-
-
-	/* 2 o más comandos, requiere del uso de pipes */
-	
-	"CREAR PIPE INICIAL"
-	
-	for (i=0 ; i < spipe_len ; i++)
-	{
-		/* Creamos las tuberías para comunicación entre procesos
-		 * hijos. Notar que si forkeamos N hijos, necesitaremos
-		 * N-1 tuberías para comunicación 
-		 */
-		if (i>0)
-		/* recordamos la tubería anterior */
-			pipe_prev = pipe_fd;
-		if (i+1 < spipe_len)
-		/* construimos la nueva tubería */
-			p_status = pipe (pipe_fd);
-			if (p_status < 0) {
-				perror ("Unable to create pipe\n");
-				exit(1);
-			}
-			pipe_next = pipe_fd;
-	}
