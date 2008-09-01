@@ -4,7 +4,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <stdbool.h> 
+#include <stdbool.h>
 #include "bstring/bstrlib.h"
 #include "command.h" /*el scommand y el pipeline*/
 #include "lexer.h"
