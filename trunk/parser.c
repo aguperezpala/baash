@@ -64,11 +64,13 @@ parser_error parser_set_state (parser* self){
 	lexer_next_char (self->lex, PARSER_END_CMD);
 	
 	if (!lexer_is_off (self->lex)) {
-		aux = lexer_item (self->lex);
-		if (aux == NULL) { /*tomamos el caracter*/
-			self->state = PARSER_STATE_EXIT;
-			return PARSER_ERROR;
-		}
+		aux = lexer_item (self->lex);	
+	}
+	else{
+		/*vamos a producir un "abort" forzoso*/
+		self->err = PARSER_ERROR; 
+		self->state = PARSER_STATE_EXIT;
+		return PARSER_ERROR;
 	}
 	
 	if (bstrchrp (aux, '\n', 0) == 0){
@@ -88,7 +90,6 @@ parser_error parser_set_state (parser* self){
 		result = PARSER_NO_ERROR;
 	}
 	
-	
 	bdestroy (aux);
 	/*si no entro en ninguna de esas es porque hay un espacio en blanco
 	 *por lo que tenemos que seguir leyendo la cadena de caracteres */
@@ -101,7 +102,7 @@ bstring parser_get_bstrcmd (parser* self){
 	assert (self != NULL);
 
 	/*primero vamos a limpiar los espacios en blanco*/
-	lexer_skip (self->lex, BLANK);
+	lexer_skip (self->lex, PARSER_BLANK);
 	
 	/*ahora leemos el el "dato" si es posible*/
 	lexer_next_to (self->lex, PARSER_END_CMD);
@@ -110,7 +111,7 @@ bstring parser_get_bstrcmd (parser* self){
 	if (!lexer_is_off (self->lex))
 		result = lexer_item (self->lex);
 	
-	lexer_skip (self->lex, BLANK);
+	lexer_skip (self->lex, PARSER_BLANK);
 	/*en caso de no poder obtener el dato devolvemos NULL*/
 	return result;
 }
@@ -133,44 +134,50 @@ pipeline* parse_pipeline (parser* self){
 	while (self->state != PARSER_STATE_EXIT && self->err == PARSER_NO_ERROR){
 		/*mientras tengamos que leer, y no se haya ningun error*/
 		
-		if ((self->strtmp = parser_get_bstrcmd (self)) == NULL){
-			/*salimos del ciclo, ya no hay mas nada que leer*/
-			break;
-		}
+		self->strtmp = parser_get_bstrcmd (self);/*tomamos el cmd*/
 		
 		/*este switch probablemente seria mejor con un arreglo de punteros
 		 *a funciones*/
 		switch (self->state){
 			
 			case PARSER_STATE_CMD: /*metemos el cmd o argumento al scmd*/
-				scommand_push_back (scmd, self->strtmp);
+				if (self->strtmp != NULL)
+					scommand_push_back (scmd, self->strtmp);
 				break;
 			
 			case PARSER_STATE_DIR_OUT:
 				/*aca podriamos tener en cuenta si ya hay un
 				redir_out seteado*/
 				if (blength (self->strtmp) == 0){ /*error*/
-					printf ("ERRORRRR NO OUT FILE");
-					self->err = PARSER_ERROR_DIR_OUT;
+					printf("error en no dir out\n");
+					self->err = PARSER_ERROR_NO_DIR_OUT;
 				}
-				scommand_set_redir_out (scmd, self->strtmp);
+				else
+					scommand_set_redir_out (scmd, self->strtmp);
 				break;
 				
 			case PARSER_STATE_DIR_IN:
 				if (blength (self->strtmp) == 0){ /*error*/
-					printf ("ERRORRRR NO IN FILE");
-					self->err = PARSER_ERROR_DIR_IN;
+					printf("error en no dir in\n");
+					self->err = PARSER_ERROR_NO_DIR_IN;
 				}
-				scommand_set_redir_in (scmd, self->strtmp);
+				else
+					scommand_set_redir_in (scmd, self->strtmp);
 				break;
 			
 			case PARSER_STATE_PIPE:
-				/*introducimos el scommand*/
-				pipeline_push_back (result, scmd);
-				scmd = scommand_new (); /*generamos nuevo*/
-				/*y le introducimos la ultima info tomada*/
-				scommand_push_back (scmd, self->strtmp);
-				
+				/*verificamos errores*/
+				if (blength (self->strtmp) == 0){
+					printf("error despues de |\n");
+					self->err = PARSER_ERROR_SINTAXIS;
+				}
+				else{
+					pipeline_push_back (result, scmd);
+					scmd = scommand_new (); /*generamos nuevo*/
+					/*y le introducimos la ultima info tomada*/
+					scommand_push_back (scmd, self->strtmp);
+				}
+					
 				break;
 				
 			case PARSER_STATE_EXIT:
@@ -178,20 +185,24 @@ pipeline* parse_pipeline (parser* self){
 				break;
 			
 			case PARSER_STATE_NO_WAIT:
-				pipeline_set_wait (result, false);
-				/*deberiamos hacer un nuevo scommand, pero sin
-				*esperar, ta complicado, seria un nuevo pipe*/
+				if (blength (self->strtmp) != 0){
+					printf("error en &\n");
+					self->err = PARSER_ERROR_SINTAXIS;
+				}
+				else
+					pipeline_set_wait (result, false);
 				break;
 			
 		}
 		/*seteamos el proximo estado y en caso de error salimos*/
-		if (parser_set_state (self) == PARSER_ERROR)
-			break;
-			
+		parser_set_state (self);
 		
 		
+		/*if (parser_set_state (self) == PARSER_ERROR){
+		}*/
 		
 	}
+	printf("state:%d\nerror:%d\n",self->state,self->err);
 	if (self->state == PARSER_STATE_NO_WAIT)
 		pipeline_set_wait (result, false);
 	if (scmd != NULL) /*agregamos el ultimo scmd hecho*/

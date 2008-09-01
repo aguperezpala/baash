@@ -20,7 +20,8 @@
 /*estos caracteres nos dicen si hay un fin de comando, teniendo en cuenta BLANK
  *de LEXER
 */
-#define PARSER_END_CMD "|<>&" BLANK
+#define PARSER_BLANK "\t\r "
+#define PARSER_END_CMD "|<>&\n" PARSER_BLANK
 
 
 
@@ -32,6 +33,7 @@ typedef enum {
 	PARSER_ERROR,	 /*hay error*/
 	PARSER_ERROR_NO_DIR_IN,
 	PARSER_ERROR_NO_DIR_OUT,
+	PARSER_ERROR_NO_CMD,  /*no hay commando*/
 	PARSER_ERROR_SINTAXIS /*error desconocido*/
 } parser_error;
 
