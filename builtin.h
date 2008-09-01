@@ -10,6 +10,8 @@
 #include "bstring/bstrlib.h"
 #include "command.h"
 
+/*en esta cadena definimos los commandos que son internos y los "encerramos"
+ *entre <>*/
 #define BUILTIN_COMMANDS "<cd><exit>"
 
 
