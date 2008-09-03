@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+
+
 /* Para referencia ver la función en sí */
 int exec_long_pipe (pipeline *spipe, unsigned int spipe_len);
 
@@ -47,24 +49,6 @@ int exec_pipe (pipeline *spipe)
 		if (scommand_get_builtin (scmd)) {
 		/* Comando interno, debe ejecutarlo el padre */
 			exit_status = exe_cmd_bin (scmd);
-	/*	 TODO ESTO PUEDE REEMPLAZARLO EXE_CMD_BIN" 
-			char *argv[cmd_len-1] = NULL;
-			/ Extraemos el comando /
-			command = scommand_front (scmd);
-			scommand_pop_front (scmd);
-			scommand_push_back (scmd, command);
-			/ Guardamos los (scmd_len-1) argumentos en argv /
-			for (i=0 ; i < scmd_len-1 ; i++) {
-				arg = scommand_front (scmd);
-				argv[i] = arg->data;
-				scommand_pop_front (scmd);
-				scommand_push_back (scmd, arg);
-				arg = NULL;
-			}
-			execv (command->data, argv);
-			/ Si llegamos acá algo anduvo mal /
-			perror ("Problems with given command\n");
-			exit(1);*/
 		} else {
 		/* Comando no-built-in: lo buscamos en el filesystem 
 		 * y hacemos que un hijo lo ejecute
@@ -213,26 +197,18 @@ void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 		fd_in = open (redir_in->data, rd_flags, rd_perm);
 		if (fd_in < 0) {
 			perror ("While opening redir_in file\n");
-			exit(1);
-		}
 		aux = dup2 (fd_in , STDIN_FILENO);
-		if (aux < 0) {
+		if (aux < 0)
 			perror ("While duplicating fd_in\n");
-			exit (1);
-		}
 	}
 	aux = 0;
 	if (redir_out != NULL) {
 		fd_out = open (redir_out->data, wr_flags, wr_perm);
-		if (fd_out < 0) {
+		if (fd_out < 0)
 			perror ("While opening redir_out file\n");
-			exit(1);
-		}
 		aux = dup2 (fd_out , STDOUT_FILENO);
-		if (aux < 0) {
+		if (aux < 0)
 			perror ("While duplicating fd_out\n");
-			exit (1);
-		}
 	}
 	
 	/* Manejo de pipes */
@@ -242,15 +218,17 @@ void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 			case cmd_no-1:
 			/* Pipe anterior, de aquí leeremos */
 				close (pipe_fd[i][1]);
-				if (redir_in != NULL) {
-					close (pipe_fd[i][0]);
+				aux = dup2 (pipe_fd[i][0] , STDIN_FILENO);
+				if (aux < 0)
+					perror ("While redirecting pipes\n");
 			break;
 				
 			case cmd_no:
 			/* Aquí escribiremos */
 				close (pipe_fd[i][0]);
-				if (redir_out != NULL) {
-					close (pipe_fd[i][1]);
+				aux = dup2 (pipe_fd[i][1] , STDOUT_FILENO);
+				if (aux < 0)
+					perror ("While redirecting pipes\n");
 			break;
 				
 			default:
@@ -265,8 +243,6 @@ void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 	execv (command->data, argv);
 	/* Si llega hasta acá algo anduvo mal */
 	perror ("Problems with given command\n");
-	close
-	exit(1);
 }
 
 
@@ -289,13 +265,9 @@ int exe_cmd_bin (scommand *scmd)
 	if (0 == strncmp (command->data, "cd", 2)) {
 	/* Nos pasaron un cd, vamos al directorio proveído */
 		exit_status = chdir (arg->data);
-		if (exit_status != 0) {
-			perror ("While executing shell command\n");
-			exit(1);
-		}
 	} else if (0 == strncmp (command->data, "exit", 4)) {
 	/* Nos pasaron un exit, salimoooo */
-		exit_status = 10;
+		exit_status = EXIT;
 	}
 	
 	command = NULL;
