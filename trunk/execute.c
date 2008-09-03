@@ -17,12 +17,12 @@ int exec_long_pipe (pipeline *spipe, unsigned int spipe_len);
  * un solo comando. Si su argumento es más largo llama a la función
  * interna auxiliar "exec_long_pipe" para hacer todo el trabajo.
  */
-int exec_pipe (pipeline *pipe)
+int exec_pipe (pipeline *spipe)
 {
 	scommand *scmd = NULL;
 	pid_t child_pid = 0;
 	int exit_status = 0 , i = 0 , status = 0;
-	unsigned int pipe_len = 0 , scmd_len = 0;
+	unsigned int spipe_len = 0 , scmd_len = 0;
 	bstring command = NULL; arg = NULL
 	bool must_wait = false;
 	
@@ -33,12 +33,12 @@ int exec_pipe (pipeline *pipe)
 		exit(1);
 	}
 	
-	if (pipeline_is_empty (pipe))
+	if (pipeline_is_empty (spipe))
 	/* no hay comandos, no se ejecuta nada, volvemos */
 		return exit_status;
 	
-	pipe_len = pipeline_length (pipe);
-	if (pipe_len == 1) {
+	spipe_len = pipeline_length (spipe);
+	if (spipe_len == 1) {
 	/* Un comando solito, lo ejecutamos aquí */
 		must_wait = pipeline_get_wait (spipe);
 		scmd = pipeline_front (spipe)
@@ -46,13 +46,14 @@ int exec_pipe (pipeline *pipe)
 		
 		if (scommand_get_builtin (scmd)) {
 		/* Comando interno, debe ejecutarlo el padre */
-		### TODO ESTO PUEDE REEMPLAZARLO EXE_CMD_BIN" ###
+			exit_status = exe_cmd_bin (scmd);
+	/*	 TODO ESTO PUEDE REEMPLAZARLO EXE_CMD_BIN" 
 			char *argv[cmd_len-1] = NULL;
-			/* Extraemos el comando */
+			/ Extraemos el comando /
 			command = scommand_front (scmd);
 			scommand_pop_front (scmd);
 			scommand_push_back (scmd, command);
-			/* Guardamos los (scmd_len-1) argumentos en argv */
+			/ Guardamos los (scmd_len-1) argumentos en argv /
 			for (i=0 ; i < scmd_len-1 ; i++) {
 				arg = scommand_front (scmd);
 				argv[i] = arg->data;
@@ -61,9 +62,9 @@ int exec_pipe (pipeline *pipe)
 				arg = NULL;
 			}
 			execv (command->data, argv);
-			/* Si llegamos acá algo anduvo mal */
+			/ Si llegamos acá algo anduvo mal /
 			perror ("Problems with given command\n");
-			exit(1);
+			exit(1);*/
 		} else {
 		/* Comando no-built-in: lo buscamos en el filesystem 
 		 * y hacemos que un hijo lo ejecute
@@ -90,7 +91,7 @@ int exec_pipe (pipeline *pipe)
 		}
 	} else {
 	/* Comando largo, derivamos a función auxiliar */
-		exit_status = exec_long_pipe (pipe, pipe_len);
+		exit_status = exec_long_pipe (spipe, spipe_len);
 	}
 	
 	return exit_status;
@@ -267,3 +268,39 @@ void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 	close
 	exit(1);
 }
+
+
+/* Ejecución de comandos internos. Preparado sólo para "cd" y "exit" */
+int exe_cmd_bin (scommand *scmd)
+{
+	bstring command = NULL , arg = NULL;
+	int exit_status = 0;
+	
+	/* REQUIRES */
+	assert (scmd != NULL);
+	assert (!scommand_is_empty (scmd));
+	
+	command = scommand_front (scmd);
+	scommand_pop_front (scmd);
+	if (!scommand_is_empty (scmd))
+		arg = scommand_front (scmd);
+	scommand_push_front (scmd, command);
+	
+	if (0 == strncmp (command->data, "cd", 2)) {
+	/* Nos pasaron un cd, vamos al directorio proveído */
+		exit_status = chdir (arg->data);
+		if (exit_status != 0) {
+			perror ("While executing shell command\n");
+			exit(1);
+		}
+	} else if (0 == strncmp (command->data, "exit", 4)) {
+	/* Nos pasaron un exit, salimoooo */
+		exit_status = 10;
+	}
+	
+	command = NULL;
+	arg = NULL;
+	
+	return exit_status;
+}
+
