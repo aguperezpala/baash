@@ -5,15 +5,17 @@
 #include <stdlib.h>
 #include <assert.h>
 /* Librerías para syscalls y manejo de archivos */
-#include <sys/types.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <fcntl.h>
 
 
 
 /* Para referencia ver la función en sí */
-int exec_long_pipe (pipeline *spipe, unsigned int spipe_len);
+int exec_long_pipe (pipeline *spipe, unsigned int spipeLen);
 
 /* Función para la ejecución de los pipes. Ejecuta pipelines de
  * un solo comando. Si su argumento es más largo llama a la función
@@ -84,105 +86,114 @@ int exec_pipe (pipeline *spipe)
 /* Función interna auxiliar para ejecución de pipelines de más de un
  * comando. Es la que hace el trabajo pesado, con creación de pipes y todo.
  */
-int exec_long_pipe (pipeline *spipe, unsigned int spipe_len)
+int exec_long_pipe (pipeline *spipe, unsigned int spipeLen)
 {
 	/* Variables para forkeo de hijos */
-	pid_t child_pid = 0;
+	pid_t childPID = 0;
 	scommand *scmd = NULL;
-	bool must_wait = false , is_bin = false;
-	unsigned int scmd_len = 0 , i = 0;
+	bool mustWait = false , isBin = false;
+	unsigned int scmdLen = 0 , i = 0;
 	/* Variables para creación de pipes */
-	int **pipe_prev = NULL , **pipe_next = NULL;
-	int pipe_fd[spipe_len-2][2] = NULL;
+	int pipeFD[spipeLen-2][2] = NULL;
 	int status = -1 , p_status = -1;
 	
 	/* REQUIRES */
 	if (spipe == NULL)
-	{
 		perror ("NULL pipe provided\n");
-		exit(1);
-	}
 	
 	/* Creamos las tuberías para comunicación entre procesos hijos
 	 * Si forkeamos N hijos, necesitaremos N-1 tuberías
 	 */
-	for (i=0 ; i < spipe_len-1 ; i++) {
-		pipe_fd[i] = {0,0};
-		aux = pipe (pipe_fd[i]);
-		if (aux < 0) {
+	for (i=0 ; i < spipeLen-1 ; i++) {
+		pipeFD[i] = {0,0};
+		aux = pipe (pipeFD[i]);
+		if (aux < 0)
 			perror ("While creating pipes\n");
-			exit(1);
-		}
 		
 	}
 	
-	must_wait = pipeline_get_wait (spipe);
+	mustWait = pipeline_get_wait (spipe);
+	if (!mustWait)
+	/* Ignoramos la muerte de los hijos. Linux evita
+	 * por sí solo que se conviertan en zombies :)
+	 */
+		signal (SIGCHLD, SIG_IGN);
 	
 	/* Creación de los hijos */
-	for (i=0 ; i < spipe_len ; i++)
+	for (i=0 ; i < spipeLen ; i++)
 	{
 		scmd = pipeline_front (spipe);
 		
-		child_pid = fork();
+		childPID = fork();
 		
-		if (child_pid < 0) {
+		if (childPID < 0) {
 			perror ("Birth complications\n");
 			exit(1);
-		} else if (child_pid != 0) {  /* Proceso padre */
+		} else if (childPID != 0) {  /* Proceso padre */
 			/* Pasamos al siguiente comando */
 			pipeline_pop_front (spipe);
 			pipeline_push_back (spipe, scmd);
 			scmd = NULL;
 			/* Desvinculamos los pipes */
-			close (pipe_fd[i][0]);
-			close (pipe_fd[i][1]);
+			### ¿¿¿ DEBO HACERLO AHORA ??? ###
+			### ¿¿¿ Y SI VOY A TENER MÁS HIJOS ??? ###
+			close (pipeFD[i][0]);
+			close (pipeFD[i][1]);
 		} else {  /* Proceso hijo */
-			if (scommand_get_builtin (scmd)) {
-				exe_cmd_bin (scmd);
-		### COMPLETAR CON MODO DE ESPERA ###
-			} else if (must_wait) {
-				scmd_len = scommand_length (scmd);
-				exe_cmd_nbin (scmd, scmd_len, pipe_fd,
-						spipe_len-1, i);
+			if (!scommand_get_builtin (scmd)) {
+			/* No es interno */
+				scmdLen = scommand_length (scmd);
+				exe_cmd_nbin (scmd, scmdLen, pipeFD,
+						spipeLen-1, i);
 			} else {
-				scmd_len = scommand_length (scmd);
-				exe_cmd_nbin (scmd, scmd_len, pipe_fd,
-						spipe_len-1, i);
+			/* Si el comanmdo es interno, es inútil
+			 * ejecutarlo en un hijo porque lo que haga
+			 * se pierde con la muerte del hijo, así que
+			 * no hacemos nada
+			 */;
 			}
 		}
 	}
+	
+	if (mustWait)
+	### CREAR LA FUNCIÓN WAIT_FOR_CHILDREN ###
+		wait_for_children (spipeLen);
+	else
+	/* Volvemos al comportamiento de espera por defecto */
+		signal (SIGCHLD, SIG_DFL);
 	
 	return EXIT_SUCCESS;
 }
 
 /* Ejecución de un comando no interno */
-void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
-		   unsigned int pipes_no, unsigned int cmd_no)
+void exe_cmd_nbin (scommand *scmd, unsigned int cmdLen, int **pipeFD,
+		   unsigned int pipesToll, unsigned int cmdN)
 {
 	/* Variables para la ejecución */
 	bstring command = NULL , arg = NULL;
-	char *argv[scmd_len-1] = NULL;
+	char *argv[cmdLen-1] = NULL;
 	unsigned int i = 0;
 	/* Variables para la redirección I/O */
-	bstring redir_in = NULL , redir_out = NULL;
-	int fd_in = 0 , fd_out = 0 , aux = 0;
-	int rd_flags = 0 , rd_perm = 0 , wr_flags = 0 , wr_perm = 0 ;
+	bstring redirIn = NULL , redirOut = NULL;
+	int fdIn = 0 , fdOut = 0 , aux = 0;
+	int wrFlags = 0 , wrPerm = 0 ;
+	mode_t rdFlags = 0 , rdPerm = 0 ;
 	
 	/* REQUIRES */
 	assert (scmd != NULL);
 	
 	/* Flags y permisos para lectura/escritura de archivos */
-	rd_flags = O_RDONLY;
-	rd_perm = S_IRUSR;
-	wr_flags = O_WRONLY | O_TRUNC;
-	wr_perm = S_IWUSR;
+	rdFlags = O_RDONLY;
+	rdPerm = S_IRUSR;
+	wrFlags = O_WRONLY | O_CREAT | O_TRUNC;
+	wrPerm = S_IWUSR;
 	
 	command = scommand_front (scmd);
 	scommand_pop_front (scmd);
 	scommand_push_back (scmd, command);
 	
-	/* Guardamos los (scmd_len - 1) argumentos en args[] */
-	for (i=0 ; i < scmd_len-1 ; i++) {
+	/* Guardamos los (cmdLen - 1) argumentos en args[] */
+	for (i=0 ; i < cmdLen-1 ; i++) {
 		arg = scommand_front (scmd);
 		argv[i] = arg->data;
 		scommand_pop_front (scmd);
@@ -191,50 +202,50 @@ void exe_cmd_nbin (scommand *scmd, unsigned int scmd_len, int **pipe_fd,
 	}	
 	
 	/* Manejo de redirección de entrada/salida */
-	redir_in = scommand_get_redir_in (scmd);
-	redir_out = scommand_get_redir_out (scmd);
-	if (redir_in != NULL) {
-		fd_in = open (redir_in->data, rd_flags, rd_perm);
-		if (fd_in < 0) {
+	redirIn = scommand_get_redir_in (scmd);
+	redirOut = scommand_get_redir_out (scmd);
+	if (redirIn != NULL) {
+		fdIn = open (redirIn->data, rdFlags, rdPerm);
+		if (fdIn < 0) {
 			perror ("While opening redir_in file\n");
-		aux = dup2 (fd_in , STDIN_FILENO);
+		aux = dup2 (fdIn , STDIN_FILENO);
 		if (aux < 0)
 			perror ("While duplicating fd_in\n");
 	}
 	aux = 0;
-	if (redir_out != NULL) {
-		fd_out = open (redir_out->data, wr_flags, wr_perm);
-		if (fd_out < 0)
+	if (redirOut != NULL) {
+		fdOut = open (redirOut->data, wrFlags, wrPerm);
+		if (fdOut < 0)
 			perror ("While opening redir_out file\n");
-		aux = dup2 (fd_out , STDOUT_FILENO);
+		aux = dup2 (fdOut , STDOUT_FILENO);
 		if (aux < 0)
 			perror ("While duplicating fd_out\n");
 	}
 	
 	/* Manejo de pipes */
-	for (i=0 ; i < pipes_no ; i++) {
+	for (i=0 ; i < pipesToll ; i++) {
 		switch (i) {
 			
-			case cmd_no-1:
+			case cmdN-1:
 			/* Pipe anterior, de aquí leeremos */
-				close (pipe_fd[i][1]);
-				aux = dup2 (pipe_fd[i][0] , STDIN_FILENO);
+				close (pipeFD[i][1]);
+				aux = dup2 (pipeFD[i][0] , STDIN_FILENO);
 				if (aux < 0)
 					perror ("While redirecting pipes\n");
 			break;
 				
-			case cmd_no:
+			case cmdN:
 			/* Aquí escribiremos */
-				close (pipe_fd[i][0]);
-				aux = dup2 (pipe_fd[i][1] , STDOUT_FILENO);
+				close (pipeFD[i][0]);
+				aux = dup2 (pipeFD[i][1] , STDOUT_FILENO);
 				if (aux < 0)
 					perror ("While redirecting pipes\n");
 			break;
 				
 			default:
 			/* Estos pipes no nos conciernen */
-				close (pipe_fd[i][0]);
-				close (pipe_fd[i][1]);
+				close (pipeFD[i][0]);
+				close (pipeFD[i][1]);
 			break;
 		}
 	}
