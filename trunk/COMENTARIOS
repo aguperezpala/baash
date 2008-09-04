@@ -1,23 +1,19 @@
 Podriamos usar este archivo para agregar "comentarios" y cosas asi no tenemos que 
 estar haciendo commit con comentarios largasos...
 
-El tema de las funciones *_to_string
-while ((unsigned int) i < n) { 
-			scaux = g_queue_peek_nth (self->scmd, i);
-			if (i != 0)
-				bcatcstr (result, " |");
-			bconcat (result, scommand_to_string(scaux));
-			scaux = NULL;
-			i++;
-}
-tienen un bucle parecido a ese... fijense que scaux (en el caso de scommand_to_string 
-es un bstring), fijense que alomejor setearlo dentro del bucle como NULL es "ineficiente"...
- se lo podria hacer afuera del bucle para que lo haga 1 sola vez... creo.. fijense y diganme 
-cualquier cosa..
 
+LEER (04/09/08 - de Carlos)
+Actualmente en execute.c estoy usando dos funciones internas, ambas de mucha
+importancia para el mismo execute únicamente.
+Una es la de espera de hijos, y otra la de ejecución de pipes de más de 1 comando.
+Ninguna de ellas necesita ser exportada, ambas son de puro uso interno.
+Sin embargo, mi política fue la de no incluirlas en el execute.h, sino sólo en el
+.c. Otra forma habría sido poner todos los prototipos en el header, pero pasarles
+la cualidad de 'static' para que no puedan ser exportadas.
+La venaja de este último método es que quien lee el execute.h tiene un
+conocimiento más profundo de la forma de trabajo del módulo. Pero capaz que esto
+no es de la incumbencia de terceros. Después de todo, siguien siendo de uso
+puramente interno.
+Mañana charlamos para ver qué forma dejamos.
 
-
-* El tema de los "leaks" que valgrind tira como "still reachable: 5,276 bytes in 
-8 blocks. " para mi son por la libreria puta GQueue.... yo hace un tiempo intente
-hacer un minimain que solo creaba una cola y la eliminaba y saltaba eso, fijense
-es la jodida cara, bueno... me wa a sleepear un poco, nos vemos mañana alomejor :D.
+Pregunta: ¿lógica de cerrado de los pipes del padre?
