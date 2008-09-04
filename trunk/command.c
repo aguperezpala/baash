@@ -96,8 +96,8 @@ void scommand_pop_front (scommand *self)
 	assert (!g_queue_is_empty (self->args));
 	
 	aux = g_queue_pop_head (self->args);
-	aux = NULL;
-}
+	aux = NULL;  /* no hacemos free() ??? */
+ }
 
 
 void scommand_set_builtin (scommand *self, bool builtin)
