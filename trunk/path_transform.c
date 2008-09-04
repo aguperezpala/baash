@@ -3,10 +3,6 @@
 #include <glib.h>
 #include "path_transform.h"
 
-#define PATH_ERR (-1)
-#define PATH_OK  (0)
-/*esto va en el header */
-
 int path_transform (pipeline *pipe) {
 	unsigned int i = 0, n = 0; int err = 0;
 	scommand *scmd = NULL;
