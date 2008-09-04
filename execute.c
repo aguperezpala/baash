@@ -14,8 +14,10 @@
 
 
 
-/* Para referencia ver la función en sí */
+/* Privadas. Para referencia ver las funciones mismas más abajo */
 int exec_long_pipe (pipeline *spipe, unsigned int spipeLen);
+int wait_children (unsigned int childreN);
+
 
 /* Función para la ejecución de los pipes. Ejecuta pipelines de
  * un solo comando. Si su argumento es más largo llama a la función
@@ -24,78 +26,81 @@ int exec_long_pipe (pipeline *spipe, unsigned int spipeLen);
 int exec_pipe (pipeline *spipe)
 {
 	scommand *scmd = NULL;
-	pid_t child_pid = 0;
-	int exit_status = 0 , i = 0 , status = 0;
-	unsigned int spipe_len = 0 , scmd_len = 0;
+	pid_t childPID = 0 , waitRes = 0;
+	int exitStatus = 0 , i = 0 , status = 0;
+	unsigned int spipeLen = 0 , cmdLen = 0;
 	bstring command = NULL; arg = NULL
-	bool must_wait = false;
+	bool mustWait = false;
 	
 	/* REQUIRES */
-	if (spipe == NULL)
-	{
+	if (spipe == NULL) {
 		perror ("NULL pipe provided\n");
 		exit(1);
 	}
 	
 	if (pipeline_is_empty (spipe))
 	/* no hay comandos, no se ejecuta nada, volvemos */
-		return exit_status;
+		return exitStatus;
 	
-	spipe_len = pipeline_length (spipe);
-	if (spipe_len == 1) {
+	spipeLen = pipeline_length (spipe);
+	if (spipeLen == 1) {
 	/* Un comando solito, lo ejecutamos aquí */
-		must_wait = pipeline_get_wait (spipe);
+		mustWait = pipeline_get_wait (spipe);
 		scmd = pipeline_front (spipe)
-		cmd_len = scommand_length (scmd);
+		cmdLen = scommand_length (scmd);
 		
 		if (scommand_get_builtin (scmd)) {
 		/* Comando interno, debe ejecutarlo el padre */
-			exit_status = exe_cmd_bin (scmd);
+			exitStatus = exe_cmd_bin (scmd);
 		} else {
 		/* Comando no-built-in: lo buscamos en el filesystem 
 		 * y hacemos que un hijo lo ejecute
 		 */
-			child_pid = fork();
-			if (child_pid < 0) {
+			childPID = fork();
+			if (childPID < 0) {
 				perror ("Birth complications\n");
 				exit(1);
-			} else if (child_pid != 0 && must_wait) {
+			} else if (childPID != 0 && mustWait) {
 			/* Soy padre y espero a mi hijo */
-				wait (&status)
-				if (status < 0) {
-					perror("Problems while waiting"
-						"for my child\n");
-					exit(1);
-				}
-			} else if (child_pid != 0 && !must_wait) {
-			/* Soy padre pero no espero nada */
-			### COMPLETAR MODO DE NO ESPERA ###
+				waitRes = wait (&status)
+				if (waitRes < 0)
+					perror("While waiting for child.\n"
+					"Info gathered: %d\n",status);
+			} else if (childPID != 0 && !mustWait) {
+			/* Soy padre pero no espero nada */	
+				signal(SIGCHLD , SIG_IGN);
 			} else {
 			/* Soy hijo, ejecuto el comando */
-				exe_cmd_nbin (scmd, cmd_len, NULL, 0, 1);
+				exe_cmd_nbin (scmd, cmdLen, NULL, 0, 1);
 			}
 		}
 	} else {
 	/* Comando largo, derivamos a función auxiliar */
-		exit_status = exec_long_pipe (spipe, spipe_len);
+		exitStatus = exec_long_pipe (spipe, spipeLen);
 	}
 	
-	return exit_status;
+	return exitStatus;
 }
 
 /* Función interna auxiliar para ejecución de pipelines de más de un
- * comando. Es la que hace el trabajo pesado, con creación de pipes y todo.
+ * comando. Es la que hace el trabajo pesado: forkeo de varios hijos, 
+ * creación de pipes, e implementación de la lógica de espera.
+ * REQUIRES:
+ *	spipe != NULL
+ * ENSURES:
+ *	el pipeline *spipe no es modificado (pero sí toqueteado)
  */
 int exec_long_pipe (pipeline *spipe, unsigned int spipeLen)
 {
-	/* Variables para forkeo de hijos */
-	pid_t childPID = 0;
+	/* Variables para forkeo y espera de hijos */
+	pid_t childPID = 0 , killToll = 0;
 	scommand *scmd = NULL;
 	bool mustWait = false , isBin = false;
 	unsigned int scmdLen = 0 , i = 0;
+	int childStat = 0 , waitStat = 0;
 	/* Variables para creación de pipes */
-	int pipeFD[spipeLen-2][2] = NULL;
-	int status = -1 , p_status = -1;
+	int pipeFD[spipeLen-1][2] = NULL;
+	int aux = 0;
 	
 	/* REQUIRES */
 	if (spipe == NULL)
@@ -115,7 +120,7 @@ int exec_long_pipe (pipeline *spipe, unsigned int spipeLen)
 	mustWait = pipeline_get_wait (spipe);
 	if (!mustWait)
 	/* Ignoramos la muerte de los hijos. Linux evita
-	 * por sí solo que se conviertan en zombies :)
+	 * por sí solo que se conviertan en zombies :D
 	 */
 		signal (SIGCHLD, SIG_IGN);
 	
@@ -134,11 +139,20 @@ int exec_long_pipe (pipeline *spipe, unsigned int spipeLen)
 			pipeline_pop_front (spipe);
 			pipeline_push_back (spipe, scmd);
 			scmd = NULL;
-			/* Desvinculamos los pipes */
-			### ¿¿¿ DEBO HACERLO AHORA ??? ###
-			### ¿¿¿ Y SI VOY A TENER MÁS HIJOS ??? ###
-			close (pipeFD[i][0]);
-			close (pipeFD[i][1]);
+			
+			if (mustWait) {
+			/* Sin detenernos, vamos limpiando todos los
+			 * hijos posibles dentro del mismo ciclo de
+			 * creación, para ganar tiempo
+			 */
+				waitStat = waitpid (WAIT_ANY,
+						&childStatus, WNOHANG);
+				if (waitStat != 0) {
+					killToll++;
+					waitStat = 0;
+				}
+			}
+			
 		} else {  /* Proceso hijo */
 			if (!scommand_get_builtin (scmd)) {
 			/* No es interno */
@@ -153,13 +167,21 @@ int exec_long_pipe (pipeline *spipe, unsigned int spipeLen)
 			 */;
 			}
 		}
+	}/* Sólo el padre pasa este ciclo, todos los hijos desaparecen
+	  * durante su llamada a execv()
+	  */
+	
+	for (i=0 ; i < spipeLen-1 ; i++) {
+	/* Desvinculamos los pipes */
+		close (pipeFD[i][0]);
+		close (pipeFD[i][1]);
 	}
 	
-	if (mustWait)
-	### CREAR LA FUNCIÓN WAIT_FOR_CHILDREN ###
-		wait_for_children (spipeLen);
-	else
-	/* Volvemos al comportamiento de espera por defecto */
+	if (mustWait) { 
+		childStat = wait_children ((unsigned int) spipeLen-killToll);
+		if (childStat != 0)
+			perror ("While waiting for children\n");
+	} else { /* Volvemos al comportamiento de espera por defecto */
 		signal (SIGCHLD, SIG_DFL);
 	
 	return EXIT_SUCCESS;
@@ -261,7 +283,7 @@ void exe_cmd_nbin (scommand *scmd, unsigned int cmdLen, int **pipeFD,
 int exe_cmd_bin (scommand *scmd)
 {
 	bstring command = NULL , arg = NULL;
-	int exit_status = 0;
+	int exitStatus = 0;
 	
 	/* REQUIRES */
 	assert (scmd != NULL);
@@ -278,12 +300,35 @@ int exe_cmd_bin (scommand *scmd)
 		exit_status = chdir (arg->data);
 	} else if (0 == strncmp (command->data, "exit", 4)) {
 	/* Nos pasaron un exit, salimoooo */
-		exit_status = EXIT;
+		exitStatus = EXIT;
 	}
 	
 	command = NULL;
 	arg = NULL;
 	
-	return exit_status;
+	return exitStatus;
 }
 
+/* Espera por la muerte de los (childreN) procesos hijos. En la variable
+ * status se guarda info sobre la salida de cada wait.
+ * ENSURES:
+ *	exitStatus==0 && EXIT_SUCCESS || exitStatus!=0 && EXIT_FAILURE
+ * RETURNS:
+ *	El entero indica el estado de terminación de todo el proceso
+ *	de espera. Una sola espera fallida causa un EXIT_FAILURE
+ */
+int wait_children (unsigned int childreN)
+{
+	pid_t waitRes = 0;
+	int i = 0 , status = 0 , exitStatus = 0;
+	
+	for (i=0 ; i < childreN ; i++) {
+		waitRes = wait(&status);
+		if (waitRes < 0) {
+			perror ("While waiting for child termination.\n"
+				"Info gathered: %d\n", status);
+			exitStatus = waitRes;
+		}
+	
+	return exitStatus
+}
