@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include "path_transform.h"
 
+#define _GNU_SOURCE
 #define PATH PATH
 
 int path_transform (pipeline *pipe) {
@@ -39,7 +42,7 @@ int path_transform_scommand (scommand *scmd) {
 	path = getenv ("PATH");
 	assert (path!=NULL);
 	
-	fpath = (FILE *)fmemopen (path, strlen (path) + 1,"r");
+	fpath = (FILE *)fmemopen (path, strlen (path),"r");
 	if (fpath != NULL)
 		lex = lexer_new (fpath);
 		/* creamos un lexer con el contenido de $PATH */
