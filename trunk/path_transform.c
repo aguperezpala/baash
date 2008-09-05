@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +7,6 @@
 #include <assert.h>
 #include "path_transform.h"
 
-#define _GNU_SOURCE
 #define PATH PATH
 
 int path_transform (pipeline *pipe) {
@@ -57,7 +58,7 @@ int path_transform_scommand (scommand *scmd) {
 		bconchar (aux, '/');
 		bconcat (aux,cmd);
 		
-		if (access (bdata (aux),X_OK) == 0) {
+		if (access ((char *)aux->data,X_OK) == 0) {
 		/* existe ese archivo con permisos de ejecucion? */
 			scommand_pop_front (scmd);
 			scommand_push_front (scmd, aux);
@@ -80,15 +81,3 @@ int path_transform_scommand (scommand *scmd) {
 	else
 		return PATH_ERR;
 }
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-			
