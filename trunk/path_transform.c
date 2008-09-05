@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <glib.h>
+#include <unistd.h>
 #include "path_transform.h"
+
+#define PATH PATH
 
 int path_transform (pipeline *pipe) {
 	unsigned int i = 0, n = 0; int err = 0;
@@ -34,10 +36,10 @@ int path_transform_scommand (scommand *scmd) {
 	/* el comando es built-in o ya es ruta absoluta: nada para hacer */
 		return PATH_OK;
 
-	path = getenv (PATH);
+	path = getenv ("PATH");
 	assert (path!=NULL);
 	
-	fpath = fmemopen (path, strlen (path) + 1,"r");
+	fpath = (FILE *)fmemopen (path, strlen (path) + 1,"r");
 	if (fpath != NULL)
 		lex = lexer_new (fpath);
 		/* creamos un lexer con el contenido de $PATH */
@@ -49,8 +51,8 @@ int path_transform_scommand (scommand *scmd) {
 		aux = lexer_item (lex);
 		assert (aux != NULL);
 		
-		bconchar (aux, "/");
-		bconcat (aux,cmd):
+		bconchar (aux, '/');
+		bconcat (aux,cmd);
 		
 		if (access (bdata (aux),X_OK) == 0) {
 		/* existe ese archivo con permisos de ejecucion? */
