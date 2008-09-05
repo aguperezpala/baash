@@ -9,6 +9,8 @@
  */ 
 
 
+#include "command.h"
+#include "lexer.h"
 #include "bstring/bstrlib.h"
 #include "command.h" /*el scommand y el pipeline*/
 
@@ -19,3 +21,5 @@ int path_transform (pipeline *pipe);
  
 int path_transform_scommand (scommand *scmd);
  /* convierte el comando de un scmd a una ruta absoluta */ 
+ 
+ #endif
