@@ -4,9 +4,20 @@
 #include "parser.h"
 
 
+typedef enum {
+	PARSER_STATE_EXIT,   /* salimos */
+	PARSER_STATE_CMD,    /* es un comando o un argumento */
+	PARSER_STATE_DIR_IN, /* ES UN DIR_IN */
+	PARSER_STATE_DIR_OUT,/* ES UN DIR_OUT */
+	PARSER_STATE_PIPE,   /* ES UN PIPE */
+	PARSER_STATE_NO_WAIT /* termina */
+} parser_state;
+
+
+
 struct parser_s {
 	Lexer* lex; 		/*lexer para el parseo*/
-	bstring strtmp; 	/*vamos a almacenar temporalmente lo obtenido del lexer*/
+	bstring strtmp; 	/* almacenar lo obtenido del lexer*/
 	parser_state state; 	/*vamos a determinar 5 estados:
 				0->parar de leer = SALIR
 				1->comando o argumentos
@@ -36,18 +47,19 @@ static void parser_set_state (parser* self){
 	self->state = PARSER_STATE_CMD;
 	/*primero tomamos el caracter de "operador" que determina alguno de los
 	*estados*/
-	lexer_next_char (self->lex, PARSER_END_CMD);
+	if (!lexer_is_off (self->lex))	
+		lexer_next_char (self->lex, PARSER_END_CMD);
 	
 	if (!lexer_is_off (self->lex)) {
 		aux = lexer_item (self->lex);	
 	}
 	else{
 		/*vamos a producir un "abort" forzoso*/
-		self->err = PARSER_ERROR; 
+		self->err = PARSER_EOF; 
 		self->state = PARSER_STATE_EXIT;
 	}
 	
-	if (bstrchrp (aux, '\n', 0) == 0){
+	if (bstrchrp (aux, '\n', 0) == 0 || lexer_is_off (self->lex)){
 		self->state = PARSER_STATE_EXIT;
 	}else if (bstrchrp (aux, '>', 0) == 0){
 		self->state = PARSER_STATE_DIR_OUT;
@@ -66,7 +78,7 @@ static void parser_set_state (parser* self){
 
 
 
-/* Esta funcion nos devuelve el nombre del cmd/args/dirout/dirin, que luego
+/* Esta funcion nos devuelve el nombre del cmd/args/redirout/redirin, que luego
  * segun el "state" del parser va a determinar su accion.
  	REQUIRES:
  		self != NULL
@@ -75,60 +87,32 @@ static void parser_set_state (parser* self){
  		bstring => caso contrario
  		
  	se podria decir que se asegura en todo momento que no se haya terminado
- 	de leer la cadena de caracteres, en caso de haberse terminado returns NULL
+ 	de leer la cadena de caracteres, en caso de haber terminado returns NULL
  */
 static bstring parser_get_bstrcmd (parser* self){
 	bstring result = NULL;
 	
 	assert (self != NULL);
 
-	/*primero vamos a limpiar los espacios en blanco*/
+	/*primero vamos a limpiar los espacios en blanco, el PARSER_END_CMD
+	 * es para que no tome un enter como un comando */
 	lexer_skip (self->lex, PARSER_BLANK);
 	
 	/*ahora leemos el el "dato" si es posible*/
-	lexer_next_to (self->lex, PARSER_END_CMD);
+	if (!lexer_is_off (self->lex))
+		lexer_next_to (self->lex, PARSER_END_CMD);
 	
 	/*si es posible lo apuntamos en result*/
 	if (!lexer_is_off (self->lex))
 		result = lexer_item (self->lex);
 	
 	/*limpiamos los espacios en blanco posteriores*/
-	lexer_skip (self->lex, PARSER_BLANK);
+	if (!lexer_is_off (self->lex))
+		lexer_skip (self->lex, PARSER_BLANK);
 	/*en caso de no poder obtener el dato devolvemos NULL*/
 	return result;
 }
 
-
-/*esta funcion nos borra todo un scommand, libera toda la memoria que puede
- *estar apuntando el scommand.
- *	REQUIRES:
- 		self != NULL
-*/
-static void parser_free_scommand (scommand* self){
-	unsigned int i = 0;
-	bstring aux = NULL;
-	
-	assert (self != NULL);
-	
-	for (i = scommand_length (self); i > 0; i--){
-		aux = scommand_front (self);
-		bdestroy (aux);
-		aux = NULL;
-		scommand_pop_front (self);
-	}
-	
-	aux = scommand_get_redir_in (self);
-	bdestroy (aux);
-	
-	aux = scommand_get_redir_out (self);
-	bdestroy (aux);
-	
-	scommand_destroy (self);
-	
-}
-	
-	
-	
 
 /***********************************************************************/
 /****************	FUNCIONES EXTERNAS	************************/
@@ -155,7 +139,7 @@ void parser_destroy (parser* self){
 	
 	if (self->lex != NULL) /*por las dudas*/
 		lexer_destroy (self->lex);
-		
+	
 	free (self);
 }
 	
@@ -167,17 +151,18 @@ void parser_destroy (parser* self){
 pipeline* parse_pipeline (parser* self){
 	pipeline * result = NULL;
 	scommand * scmd = NULL;
-	unsigned int i = 0;
 	
 	assert (self != NULL);
-	/*seteamos el estado inicial que es de "command"*/
+	/*seteamos el estado inicial que es de "command" y no hay error*/
 	self->state = PARSER_STATE_CMD;
+	self->err = PARSER_NO_ERROR;
 	scmd = scommand_new (); /*inicializamos el scmd y el pipe*/
 	result = pipeline_new ();
 	
 	
 	
-	while (self->state != PARSER_STATE_EXIT && self->err == PARSER_NO_ERROR){
+	while (self->state != PARSER_STATE_EXIT && self->err == PARSER_NO_ERROR
+		&& !lexer_is_off (self->lex)){
 		/*mientras tengamos que leer, y no haya ningun error*/
 		
 		self->strtmp = parser_get_bstrcmd (self);/*tomamos el cmd*/
@@ -187,7 +172,8 @@ pipeline* parse_pipeline (parser* self){
 		switch (self->state){
 			
 			case PARSER_STATE_CMD: /*metemos el cmd o argumento al scmd*/
-				if (self->strtmp != NULL)
+				if (self->strtmp != NULL && 
+					blength (self->strtmp) > 0)
 					scommand_push_back (scmd, self->strtmp);
 				break;
 			
@@ -237,37 +223,52 @@ pipeline* parse_pipeline (parser* self){
 				if (blength (self->strtmp) != 0){
 					self->err = PARSER_ERROR_SINTAXIS;
 				}
-				else
+				else{
 					pipeline_set_wait (result, false);
+					/*destruimos la basura*/
+					bdestroy (self->strtmp);
+				}
 				break;
 			
 		}
 		/*seteamos el proximo estado y en caso de error salimos*/
-		parser_set_state (self);	
+		parser_set_state (self);
 	}
-	/*si salimos porque hubo algun error entonces tenemos que "comer" hasta
-	 *el \n, y ademas vamos a liberar toda la memoria usada*/
+	/*si salimos porque hubo algun error y no llegamos a comer hasta el
+	 *final, entonces comemos las "sobras"*/
 	if (self->err != PARSER_NO_ERROR){
-		lexer_skip_to (self->lex, "\n"); /*comemos hasta fin de linea*/
 		bdestroy (self->strtmp); /*destruimos lo ultimo tomado*/
-		parser_free_scommand (scmd); /*borramos el ultimo scommand*/
-		scmd = NULL;
-		for (i = pipeline_length (result); i > (unsigned int ) 0; i--){
-			scmd = pipeline_front (result);
-			parser_free_scommand (scmd);
-			pipeline_pop_front (result);
-			scmd = NULL;
+		/*comemos hasta fin de linea si es que no llego*/
+		if (self->state != PARSER_STATE_EXIT){
+			lexer_skip_to (self->lex, "\n");
+			if (!lexer_is_off (self->lex))
+				lexer_next_char (self->lex, "\n");
+			if (!lexer_is_off (self->lex)) {
+				bdestroy (lexer_item (self->lex));
+			}
 		}
-		pipeline_destroy (result);
-		return NULL; /*devolvemos null*/
 	}
-		
 	/*agregamos el ultimo scmd hecho*/
-	if (scmd != NULL){ 
+	/*vemos que no sea vacio*/
+	if (!scommand_is_empty (scmd)){
 		/*seteamos si es builtin*/
 		scommand_set_builtin (scmd, builtin_scommand_is (scmd));
 		pipeline_push_back (result, scmd);
-	}	
+	} else {
+		/*eliminamos el "leak"*/
+		bdestroy (self->strtmp);
+		scommand_destroy (scmd);
+	} 
+
+	/*ultimo chequeo para ver si no se ingreso ningun commando*/
+	if (pipeline_is_empty (result) && self->err == PARSER_NO_ERROR){
+		self->err = PARSER_ERROR_NO_CMD;/*no hay commandos*/
+	}
+	/*ahora chequeamos que no se haya terminado de leer el stdin/archivo*/
+	if (lexer_is_off (self->lex))
+		self->err = PARSER_EOF;
+	
+	assert (result != NULL); /*nos aseguramos que no devuelva un NULL*/
 	
 	return result;
 }

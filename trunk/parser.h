@@ -33,29 +33,19 @@ typedef struct parser_s parser;
 
 
 typedef enum {
-	PARSER_NO_ERROR, /*no hay error*/
-	PARSER_ERROR,	 /*hay error*/
-	PARSER_ERROR_NO_DIR_IN,
-	PARSER_ERROR_NO_DIR_OUT,
-	PARSER_ERROR_NO_CMD,  /*no hay commando*/
-	PARSER_ERROR_SINTAXIS /*error desconocido*/
+	PARSER_NO_ERROR, 	/*no hay error*/
+	PARSER_EOF,	 	/*hay error alguno*/
+	PARSER_ERROR_NO_DIR_IN, /*no redirin*/
+	PARSER_ERROR_NO_DIR_OUT,/*no redirout*/
+	PARSER_ERROR_NO_CMD,    /*no hay commando, no hacemos nada*/
+	PARSER_ERROR_SINTAXIS   /*error desconocido*/
 } parser_error;
-
-typedef enum {
-	PARSER_STATE_EXIT,   /* salimos */
-	PARSER_STATE_CMD,    /* es un comando o un argumento */
-	PARSER_STATE_DIR_IN, /* ES UN DIR_IN */
-	PARSER_STATE_DIR_OUT,/* ES UN DIR_OUT */
-	PARSER_STATE_PIPE,   /* ES UN PIPE */
-	PARSER_STATE_NO_WAIT /* termina */
-} parser_state;
 
 
 
 parser* parser_new (void);
 /* genera el parser para leer desde el stdin
 	ENSURES:
-		"result->lexer != NULL (STARTED)"
 		result != NULL
 */
 
@@ -68,11 +58,10 @@ void parser_destroy (parser* self);
 
 
 pipeline* parse_pipeline (parser* self);
-/* convierte lo de PARSER_IN (stdin) en un pipeline
+/* convierte lo de PARSER_IN (stdin en este caso) en un pipeline
 	REQUIRES:
 		self != NULL
 	ENSURES:
-		result->state = PARSER_STATE_CMD // siempre empieza con comando
 		result != NULL
 */
 
