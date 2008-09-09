@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <glib.h>
 #include "parser.h"
+
 
 typedef enum {
 	PARSER_STATE_EXIT,   /* salimos */
@@ -26,8 +26,7 @@ struct parser_s {
 				4->pipeline
 				5->no_wait
 			   */
-	parser_error err;  /* nos va a determinar el error del nth pipe*/
-	
+	parser_error err;
 };
 
 /****************	FUNCIONES INTERNAS	***********************/
@@ -91,7 +90,7 @@ static void parser_set_state (parser* self){
  	de leer la cadena de caracteres, en caso de haber terminado returns NULL
  */
 static bstring parser_get_bstrcmd (parser* self){
-	bstring pipe = NULL;
+	bstring result = NULL;
 	
 	assert (self != NULL);
 
@@ -103,15 +102,15 @@ static bstring parser_get_bstrcmd (parser* self){
 	if (!lexer_is_off (self->lex))
 		lexer_next_to (self->lex, PARSER_END_CMD);
 	
-	/*si es posible lo apuntamos en pipe*/
+	/*si es posible lo apuntamos en result*/
 	if (!lexer_is_off (self->lex))
-		pipe = lexer_item (self->lex);
+		result = lexer_item (self->lex);
 	
 	/*limpiamos los espacios en blanco posteriores*/
 	if (!lexer_is_off (self->lex))
 		lexer_skip (self->lex, PARSER_BLANK);
 	/*en caso de no poder obtener el dato devolvemos NULL*/
-	return pipe;
+	return result;
 }
 
 
@@ -119,20 +118,20 @@ static bstring parser_get_bstrcmd (parser* self){
 /****************	FUNCIONES EXTERNAS	************************/
 
 parser* parser_new (void){
-	parser * pipe = NULL;
+	parser * result = NULL;
 	
 	
-	pipe = (parser *) calloc (1, sizeof (struct parser_s));
+	result = (parser *) calloc (1, sizeof (struct parser_s));
 	
-	assert (pipe != NULL);
+	assert (result != NULL);
 	
-	pipe->err = PARSER_NO_ERROR; 		/*no tenemos ningun error*/
-	pipe->lex = lexer_new (PARSER_IN);	/*le pasamos "stdin"*/ 
+	result->err = PARSER_NO_ERROR; 		/*no tenemos ningun error*/
+	result->lex = lexer_new (PARSER_IN);	/*le pasamos "stdin"*/ 
 	/*se asegura lexer de que se haya creado*/
-	pipe->strtmp = NULL; /*no lo inicializamos*/
- 	pipe->state = PARSER_STATE_EXIT;
+	result->strtmp = NULL; /*no lo inicializamos*/
+ 	result->state = PARSER_STATE_EXIT;
 	
-	return pipe;
+	return result;
 }
 
 void parser_destroy (parser* self){
@@ -140,7 +139,7 @@ void parser_destroy (parser* self){
 	
 	if (self->lex != NULL) /*por las dudas*/
 		lexer_destroy (self->lex);
-	
+		
 	free (self);
 }
 	
@@ -149,21 +148,21 @@ void parser_destroy (parser* self){
 
 
 
-GQueue * parse_pipeline (parser* self){
-	pipeline * pipe = NULL;
+pipeline* parse_pipeline (parser* self){
+	pipeline * result = NULL;
 	scommand * scmd = NULL;
-	GQueue * result = NULL;
+	
 	assert (self != NULL);
 	/*seteamos el estado inicial que es de "command" y no hay error*/
 	self->state = PARSER_STATE_CMD;
 	self->err = PARSER_NO_ERROR;
 	scmd = scommand_new (); /*inicializamos el scmd y el pipe*/
-	pipe = pipeline_new ();
-	result = g_queue_new ();
+	result = pipeline_new ();
 	
 	
 	
-	while (self->state != PARSER_STATE_EXIT	&& !lexer_is_off (self->lex)){
+	while (self->state != PARSER_STATE_EXIT && self->err == PARSER_NO_ERROR
+		&& !lexer_is_off (self->lex)){
 		/*mientras tengamos que leer, y no haya ningun error*/
 		
 		self->strtmp = parser_get_bstrcmd (self);/*tomamos el cmd*/
@@ -206,7 +205,7 @@ GQueue * parse_pipeline (parser* self){
 					  o no*/
 					scommand_set_builtin (scmd,
 							builtin_scommand_is (scmd));
-					pipeline_push_back (pipe, scmd);
+					pipeline_push_back (result, scmd);
 					scmd = scommand_new (); /*generamos nuevo*/
 					/*y le introducimos la ultima info tomada*/
 					if (self->strtmp != NULL)
@@ -222,32 +221,15 @@ GQueue * parse_pipeline (parser* self){
 			
 			case PARSER_STATE_NO_WAIT:
 				if (blength (self->strtmp) != 0){
-					/*guardamos el pipe generado en la cola*/
-					pipeline_push_back (pipe, scmd);
-					pipeline_set_wait (pipe, false);
-					g_queue_push_tail (result,pipe);
-					pipeline_set_wait (pipe, false);
-					/*generamos el nuevo scmd y pipe*/
-					scmd = scommand_new ();
-					pipe = pipeline_new ();
-					/*le metemos el ultimo dato al scmd*/
-					scommand_push_back (scmd, self->strtmp);
-					
+					self->err = PARSER_ERROR_SINTAXIS;
 				}
-				else{
-					pipeline_set_wait (pipe, false);
-					/*destruimos la basura*/
-					bdestroy (self->strtmp);
-				}
+				else
+					pipeline_set_wait (result, false);
 				break;
 			
 		}
 		/*seteamos el proximo estado y en caso de error salimos*/
 		parser_set_state (self);
-		/*ahora debemos chequear que si se produjo un error hasta ese
-		 *momento entonces tenemos que borrar el ultimo pipe y devolver
-		 *lo otro*/
-		
 	}
 	/*si salimos porque hubo algun error y no llegamos a comer hasta el
 	 *final, entonces comemos las "sobras"*/
@@ -268,7 +250,7 @@ GQueue * parse_pipeline (parser* self){
 	if (!scommand_is_empty (scmd)){
 		/*seteamos si es builtin*/
 		scommand_set_builtin (scmd, builtin_scommand_is (scmd));
-		pipeline_push_back (pipe, scmd);
+		pipeline_push_back (result, scmd);
 	} else {
 		/*eliminamos el "leak"*/
 		bdestroy (self->strtmp);
@@ -276,7 +258,7 @@ GQueue * parse_pipeline (parser* self){
 	} 
 
 	/*ultimo chequeo para ver si no se ingreso ningun commando*/
-	if (pipeline_is_empty (pipe) && self->err == PARSER_NO_ERROR){
+	if (pipeline_is_empty (result) && self->err == PARSER_NO_ERROR){
 		self->err = PARSER_ERROR_NO_CMD;/*no hay commandos*/
 	}
 	/*ahora chequeamos que no se haya terminado de leer el stdin/archivo*/
@@ -291,7 +273,6 @@ GQueue * parse_pipeline (parser* self){
 
 parser_error parser_get_error (parser * self){
 	assert (self != NULL);
-	
 	return self->err;
 }
 

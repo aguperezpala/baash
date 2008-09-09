@@ -57,25 +57,16 @@ int exe_cmd_bin (scommand *scmd)
 	 */
 	 	if (arg != NULL && blength (arg) > 0) {
 	 		if (bisstemeqblk (arg, "~", 1) == 1) {
-	 		/* reemplazamos el ~ por $HOME */
 	 		 	home = bfromcstr (getenv ("HOME"));
 	 		 	assert (home != NULL);
 	 		 	breplace (arg, 0, 1, home, ' ');
 	 		 	bdestroy (home);
-	 		 }
-	 		 if (bisstemeqblk (arg, "-h", 2) == 1)
-	 			printf ("cd: usage: cd [dir]\n");
-	 		else 
-				exitStatus = chdir ((char*) arg->data);
-			
+	 		}
+			exitStatus = chdir ((char*) arg->data);
 		} else {
-		/* Si llamamos a cd sin argumentos, vamos a $HOME */
+			/* si llamamos a cd sin argumentos, vamos a $HOME */
 			aux = getenv ("HOME");
 			exitStatus = chdir (aux);
-		}
-		if (exitStatus != 0) {
-		/* Directorio proveído no hallado */
-			exitStatus = WRONG_DIR;
 		}
 	} else if (0 == strncmp ((char*) command->data, "exit", 4)) {
 	/* Nos pasaron un exit, salimoooo */

@@ -57,7 +57,7 @@ void parser_destroy (parser* self);
 */
 
 
-GQueue* parse_pipeline (parser* self);
+pipeline* parse_pipeline (parser* self);
 /* convierte lo de PARSER_IN (stdin en este caso) en un pipeline
 	REQUIRES:
 		self != NULL
