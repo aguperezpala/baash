@@ -221,7 +221,20 @@ pipeline* parse_pipeline (parser* self){
 			
 			case PARSER_STATE_NO_WAIT:
 				if (blength (self->strtmp) != 0){
+<<<<<<< .mine
+					/*guardamos el pipe generado en la cola*/
+					pipeline_push_back (pipe, scmd);
+					pipeline_set_wait (pipe, false);
+					g_queue_push_tail (result,pipe);
+					/*generamos el nuevo scmd y pipe*/
+					scmd = scommand_new ();
+					pipe = pipeline_new ();
+					/*le metemos el ultimo dato al scmd*/
+					scommand_push_back (scmd, self->strtmp);
+					
+=======
 					self->err = PARSER_ERROR_SINTAXIS;
+>>>>>>> .r45
 				}
 				else
 					pipeline_set_wait (result, false);
@@ -247,6 +260,23 @@ pipeline* parse_pipeline (parser* self){
 	}
 	/*agregamos el ultimo scmd hecho*/
 	/*vemos que no sea vacio*/
+<<<<<<< .mine
+	if (!pipeline_is_empty (pipe)){
+			
+		if (!scommand_is_empty (scmd)){
+			/*seteamos si es builtin*/
+			scommand_set_builtin (scmd, builtin_scommand_is (scmd));
+			pipeline_push_back (pipe, scmd);
+			
+		} else {
+			/*eliminamos el "leak"*/
+			bdestroy (self->strtmp);
+			scommand_destroy (scmd);
+		}
+		/*metemos el pipe dentro de la lista*/
+		g_queue_push_tail (result, pipe);
+	}
+=======
 	if (!scommand_is_empty (scmd)){
 		/*seteamos si es builtin*/
 		scommand_set_builtin (scmd, builtin_scommand_is (scmd));
@@ -256,6 +286,7 @@ pipeline* parse_pipeline (parser* self){
 		bdestroy (self->strtmp);
 		scommand_destroy (scmd);
 	} 
+>>>>>>> .r45
 
 	/*ultimo chequeo para ver si no se ingreso ningun commando*/
 	if (pipeline_is_empty (result) && self->err == PARSER_NO_ERROR){
