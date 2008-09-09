@@ -1,4 +1,9 @@
 **********************	QUE HAY QUE HACERLE	***********************
+* Modificar el parser_free_scommand.
+* En parser_pipeline modificar abajo cuando borra el pipeline, no tiene que devolver
+null.
+* Modificar el lexer (sacarlo de la estructura o crearlo y borrarlo en
+parse_pipeline.
 
 
 **********************	ESTRUCTURA GENERAL	************************
@@ -12,7 +17,8 @@ si es que se encontro alguno.
 
 	Funcionamiento:
 			parse_pipeline es la funcion mas importante. La cual 
-puede devolver NULL (en caso de error) o un pipe en caso contrario.
+devuelve un pipe siempre, tener en cuenta que este debe ser liberado desde el 
+baash si hubo un error.
  Para obtener el error hay que llamar a parser_get_error. La cual devuelve una
 de las posibilidades del enum parser_error.
  

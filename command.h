@@ -40,7 +40,8 @@ scommand *scommand_new (void);
  *   Returns: nuevo comando simple sin ninguna cadena y con ambos redirectores vacíos.
  * Ensures: result != NULL && scommand_is_empty(result) && 
  *	scommand_get_redir_in(result)==NULL &&
- *	scommand_get_redir_out(result)==NULL
+ *	scommand_get_redir_out(result)==NULL &&
+ *	scommand_get_builtin(result)
  */
  
 void scommand_destroy (scommand *self);

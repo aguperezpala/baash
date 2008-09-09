@@ -5,41 +5,59 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+
 #include "path_transform.h"
 
-#define PATH PATH
+#include "lexer.h"
+
 
 int path_transform (pipeline *pipe) {
-	unsigned int i = 0, n = 0; int err = 0;
+	unsigned int i = 0, n = 0;
 	scommand *scmd = NULL;
+	int pathResult = PATH_OK;
 
 	assert (!pipeline_is_empty (pipe));
 	
 	n = pipeline_length (pipe);
-	while (i<n) {
+	for (i = 0; i < n; i++) {
 		scmd = pipeline_front (pipe);
-		pipeline_pop_front (pipe);
-		err = path_transform_scommand (scmd);
-		pipeline_push_back (pipe, scmd);
-		i++;
-		if (err == PATH_ERR)
-			return err;
+		if (path_transform_scommand (scmd) == PATH_ERR) {
+			pathResult = PATH_ERR;
+			i = n;
+		} else {
+			pipeline_pop_front (pipe);
+			pipeline_push_back (pipe, scmd);
+		}
 	}
-	return PATH_OK;
-}
+	return pathResult;
+}	
 
 int path_transform_scommand (scommand *scmd) {
-	char *path = NULL; bool fileExist = false;
+	char *path = NULL; bool fileFound = false;
 	bstring cmd = NULL, aux = NULL;
 	Lexer *lex = NULL; FILE * fpath = NULL;
 	
 	assert (!scommand_is_empty (scmd));
 	
 	cmd = scommand_front (scmd);
-	if (scommand_get_builtin (scmd) || bstrchr (cmd,'/')!=BSTR_ERR)
-	/* el comando es built-in o ya es ruta absoluta: nada para hacer */
+	
+	assert (cmd != NULL); 
+	/* por las dudas */
+	
+	if (scommand_get_builtin (scmd))
+	/* el comando es builtin: nada para hacer */
 		return PATH_OK;
 
+	if (bstrchr (cmd,'/')!=BSTR_ERR){
+	/* si ya es una ruta, igual verificamos que se pueda ejecutar */	
+		if (access ((char *)cmd->data,X_OK) == 0)
+			return PATH_OK;
+		 else 
+			return PATH_ERR; 
+	}
+	
+	/* a buscar.. */
+	
 	path = getenv ("PATH");
 	assert (path!=NULL);
 	
@@ -51,32 +69,29 @@ int path_transform_scommand (scommand *scmd) {
 	
 	lexer_skip (lex, ":");
 	lexer_next_to (lex, ":");
-	while (!lexer_is_off (lex) && !fileExist) {
+	while (!lexer_is_off (lex) && !fileFound) {
 		aux = lexer_item (lex);
 		assert (aux != NULL);
 		
-		bconchar (aux, '/');
+		bconchar (aux,'/');
 		bconcat (aux,cmd);
-		
 		if (access ((char *)aux->data,X_OK) == 0) {
 		/* existe ese archivo con permisos de ejecucion? */
-			scommand_pop_front (scmd);
-			scommand_push_front (scmd, aux);
-			/* reemplazamos el comando por su ruta absoluta  */
-			fileExist = true;
-		} else {
-			bdestroy (aux);
-			aux = NULL;
+			breplace (cmd, 0, aux->slen, aux,' ');
+			/* reemplazamos el comando por su ruta absoluta */
+			fileFound = true;
 		}
-	
-		lexer_skip (lex, ":");
-		lexer_next_to (lex, ":");	
+		bdestroy (aux);
+		aux = NULL;
+		if (!lexer_is_off (lex))
+			lexer_skip (lex, ":");
+		if (!lexer_is_off (lex))
+			lexer_next_to (lex, ":");	
 	}
 	lexer_destroy (lex);
-	free (path);
 	fclose (fpath);
 	
-	if (fileExist)
+	if (fileFound)
 		return PATH_OK;
 	else
 		return PATH_ERR;
