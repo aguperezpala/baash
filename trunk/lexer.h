@@ -88,7 +88,8 @@ void lexer_next_to (Lexer *self, const char *charset);
 
 void lexer_next_char (Lexer *self, const char *charset);
 	/* Lee con `self' hasta 1 caracter pertenecientes a `charset'. Deja el
-	 * resultado accesible en lexer_item (self).
+	 * resultado accesible en lexer_item (self). No consume la cinta original
+     * más allá del caracter leído en caso de leer algo.
 	 * REQUIRES:
 	 *     self != NULL
 	 *     charset != NULL

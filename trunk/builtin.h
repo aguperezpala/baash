@@ -7,13 +7,16 @@
 #define BUILTIN_H
 
 #include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "bstring/bstrlib.h"
 #include "command.h"
 
 /*en esta cadena definimos los commandos que son internos y los "encerramos"
  *entre <>*/
 #define BUILTIN_COMMANDS "<cd><exit>"
-
+#define EXIT (10)
+#define WRONG_DIR (5)
 
 
 bool builtin_scommand_is (scommand * self);
@@ -24,6 +27,19 @@ bool builtin_scommand_is (scommand * self);
 */
 
 
+/* Ejecución de un comando interno. Lo debe ejecutar directamente
+ * el baash padre, sin forkeo de hijos. 
+ * REQUIRES:
+ *	scmd != NULL && !scommand_is_empty (scmd)
+ * RETURNS:
+ *	El entero devuelto es: 0 en caso de correcta ejecución o
+ * ausencia de ella; EXIT en caso de haber recibido una señal de exit;
+ * WRONG_DIR si se ejecuto un cd cuyo argumento era un directorio
+ * inexistente; cualquier otro entero en caso de error.
+ * ENSURES:
+ *	El comando *scmd no es modificado
+ */
+int exe_cmd_bin (scommand *scmd);
 
 
 

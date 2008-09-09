@@ -7,6 +7,7 @@ struct _lexer_t {
 	/* Cinta de entrada. Archivo y caracter actual */
 	FILE *input;
 	int current;
+	bool has_current; /* True cuando `current' tiene un caracter preleido */
 	/* Token siendo leído */
 	bstring item;
 	
@@ -23,10 +24,27 @@ static void lexer_accept (Lexer *self) {
 	/* Precondiciones */
 	assert (self != NULL);
 	assert (!lexer_is_off (self));
+	assert (self->has_current);
 	
 	bconchar (self->item, self->current);
 	/* Leer */
 	self->current = fgetc (self->input);
+
+	assert (self->has_current); /* Esta función mantiene esto invariante */
+}
+
+static void lexer_lookahead (Lexer *self) {
+	/* Precondiciones */
+	assert (self != NULL);
+	assert (!lexer_is_off (self));
+	
+	if (! self->has_current) {
+		/* Leer */
+		self->current = fgetc (self->input);
+		self->has_current = true;
+	}
+
+	assert (self->has_current); /* Esta función asegura esto siempre */
 }
 
 static void lexer_new_item (Lexer *self) {
@@ -53,7 +71,8 @@ Lexer *lexer_new (FILE *f) {
 	assert (result != NULL);
 	
 	result->input      = f;
-	result->current    = fgetc (f);
+	result->current    = EOF;
+	result->has_current= false;
 	result->item       = bfromcstralloc (BASE_ALLOC, "");
 	result->own_item   = true;
 	result->is_off     = false;
@@ -119,10 +138,12 @@ void lexer_next (Lexer *self, const char *charset) {
 	assert (charset != NULL);
 
 	lexer_new_item (self);
+	lexer_lookahead(self);
 	while (self->current != EOF && strchr (charset, self->current)) {
 		lexer_accept (self);
 	}
 	self->is_started = true;
+	assert (self->has_current);
 	self->is_off = (self->current==EOF && blength (self->item)==0);
 	/* Postcondiciones */
 	assert (lexer_is_started (self));
@@ -137,10 +158,12 @@ void lexer_next_to (Lexer *self, const char *charset) {
 	assert (charset != NULL);
 
 	lexer_new_item (self);
+	lexer_lookahead(self);
 	while (self->current != EOF && !strchr (charset, self->current)) {
 		lexer_accept (self);
 	}
 	self->is_started = true;
+	assert (self->has_current);
 	self->is_off = (self->current==EOF && blength (self->item)==0);
 
 	/* Postcondiciones */
@@ -152,12 +175,15 @@ void lexer_next_char (Lexer *self, const char *charset) {
 	assert (charset != NULL);
 
 	lexer_new_item (self);
+	lexer_lookahead(self);
 	if (self->current != EOF && strchr (charset, self->current)) {
-		lexer_accept (self);
+		bconchar (self->item, self->current);
+		self->has_current = false;
 	}
 
 	self->is_started = true;
-	self->is_off = (self->current==EOF && blength (self->item)==0);
+	assert (blength (self->item)!=0 || self->has_current);
+	self->is_off = (blength (self->item)==0 && self->current==EOF);
 
 	assert (lexer_is_started (self));
 }
